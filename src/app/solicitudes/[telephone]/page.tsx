@@ -21,6 +21,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useSolicitudes } from "@/hooks/useSolicitudes";
+import { usePatients } from "@/hooks/usePatients";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useMedicalPrescriptions } from "@/hooks/useMedicalPrescriptions";
 
 const formatDate = (value: string | null) => {
   if (!value) {
@@ -47,7 +50,7 @@ const formatPhone = (value: string) => {
   return cleaned.startsWith("+") ? cleaned : `+${cleaned}`;
 };
 
-const sanitizePhone = (value: string) => value.replace(/[^\d]/g, "");
+const sanitizePhone = (value?: string) => (value ? value.replace(/[^\d]/g, "") : "");
 
 const SOLICITUDES_ACTIONS = [
   { label: "Listar", icon: List },
@@ -59,15 +62,30 @@ const SOLICITUDES_ACTIONS = [
 export default function SolicitudDetailPage() {
   const params = useParams();
   const telephoneParam = params.telephone as string;
+  const normalizedParam = sanitizePhone(telephoneParam);
   const { solicitudes, status, errorMessage, fetchSolicitudes } = useSolicitudes();
+  const { patients } = usePatients();
+  const { methods } = usePaymentMethods();
+  const { prescriptions } = useMedicalPrescriptions();
 
   const solicitud = useMemo(() => {
     return solicitudes.find((item) => {
       const contact = sanitizePhone(item.contactPhone);
-      const vendor = sanitizePhone(item.vendorPhone);
-      return contact === telephoneParam || vendor === telephoneParam || item.id === telephoneParam;
+      return contact === normalizedParam;
     });
-  }, [solicitudes, telephoneParam]);
+  }, [solicitudes, normalizedParam]);
+
+  const patient = useMemo(() => {
+    return patients.find((item) => sanitizePhone(item.phone) === normalizedParam);
+  }, [patients, normalizedParam]);
+
+  const paymentMethod = useMemo(() => {
+    return methods.find((item) => sanitizePhone(item.phone) === normalizedParam);
+  }, [methods, normalizedParam]);
+
+  const prescription = useMemo(() => {
+    return prescriptions.find((item) => sanitizePhone(item.phone) === normalizedParam);
+  }, [prescriptions, normalizedParam]);
 
   if (status === "loading") {
     return (
@@ -151,22 +169,79 @@ export default function SolicitudDetailPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <section>
-              <SectionHeader title="Datos Generales" />
+              <SectionHeader title="Solicitud del pedido" />
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <InfoItem label="Paciente" value={solicitud.patient} />
+                <InfoItem label="Tipo de prueba" value={solicitud.testType} />
+                <InfoItem label="Padecimiento" value={solicitud.condition} />
                 <InfoItem label="Médico" value={solicitud.doctor} icon={Stethoscope} />
-                <InfoItem label="Creado en" value={formatDate(solicitud.createdAt)} icon={CalendarClock} />
+                <InfoItem label="Fecha de solicitud" value={formatDate(solicitud.createdAt)} icon={CalendarClock} />
                 <InfoItem label="Teléfono vendedor" value={formatPhone(solicitud.vendorPhone)} icon={Phone} />
               </div>
             </section>
 
-            <section>
-              <SectionHeader title="Datos del Paciente" />
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <InfoItem label="Nombre" value={solicitud.patient} />
-                <InfoItem label="Padecimiento" value={solicitud.condition} />
-                <InfoItem label="Teléfono" value={formatPhone(solicitud.contactPhone)} icon={Phone} />
-              </div>
-            </section>
+            {patient ? (
+              <section>
+                <SectionHeader title="Datos del paciente" />
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <InfoItem label="Nombre(s)" value={patient.firstName} />
+                  <InfoItem label="Apellidos" value={patient.lastName} />
+                  <InfoItem label="Teléfono" value={formatPhone(patient.phone)} icon={Phone} />
+                  <InfoItem label="Género" value={patient.gender} />
+                  <InfoItem label="CURP" value={patient.curp} />
+                  <InfoItem label="Fecha de nacimiento" value={patient.birthDate} />
+                  <InfoItem label="País" value={patient.country} />
+                  <InfoItem label="Estado" value={patient.state} />
+                  <InfoItem label="Municipio" value={patient.municipality} />
+                  <InfoItem label="Colonia" value={patient.neighborhood} />
+                  <InfoItem label="Código postal" value={patient.postalCode} />
+                  <InfoItem label="Domicilio" value={patient.address} />
+                </div>
+              </section>
+            ) : null}
+
+            {paymentMethod ? (
+              <section>
+                <SectionHeader title="Gestión de aseguradora" />
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <InfoItem label="Método de pago" value={paymentMethod.method} />
+                  <InfoItem label="Aseguradora" value={paymentMethod.insurerName} />
+                  <InfoItem label="Documento" value={paymentMethod.document} />
+                </div>
+                {paymentMethod.documentUrl ? (
+                  <div className="mt-4">
+                    <Link
+                      href={paymentMethod.documentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-medium text-[#8A6BA7] hover:underline"
+                    >
+                      Ver soporte
+                    </Link>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            {prescription ? (
+              <section>
+                <SectionHeader title="Receta médica" />
+                <div className="mt-4 grid grid-cols-1 gap-4">
+                  <InfoItem label="Diagnóstico / indicaciones" value={prescription.diagnosis} />
+                  <InfoItem label="Fecha de emisión" value={prescription.issuedAt} />
+                  {prescription.prescriptionUrl ? (
+                    <Link
+                      href={prescription.prescriptionUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center text-sm font-medium text-[#8A6BA7] hover:underline"
+                    >
+                      Ver receta
+                    </Link>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
           </CardContent>
         </Card>
       </main>

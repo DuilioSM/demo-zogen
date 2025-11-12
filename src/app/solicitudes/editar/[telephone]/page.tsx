@@ -2,32 +2,29 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMemo } from "react";
-import {
-  CheckCircle2,
-  Loader2,
-  Pencil,
-  Eye,
-  Undo2,
-  Phone,
-  CalendarClock,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle2, Loader2, Eye, Undo2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useSolicitudes } from "@/hooks/useSolicitudes";
+import type { Solicitud } from "@/types/solicitudes";
+import { cn } from "@/lib/utils";
+import { usePatients } from "@/hooks/usePatients";
+import type { Patient } from "@/types/patient";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import type { PaymentMethod } from "@/types/payment-method";
+import { useMedicalPrescriptions } from "@/hooks/useMedicalPrescriptions";
+import type { MedicalPrescription } from "@/types/medical-prescription";
 
-const STEP_LABELS = [
-  "Solicitud del pedido",
-  "Datos del paciente",
-  "Gestión de aseguradora",
-  "Receta médica",
-];
+const STEPS = [
+  { id: "order", label: "Solicitud del pedido" },
+  { id: "patient", label: "Datos del paciente" },
+  { id: "insurance", label: "Gestión de aseguradora" },
+  { id: "prescription", label: "Receta médica" },
+] as const;
+type StepId = (typeof STEPS)[number]["id"];
 
 const formatPhone = (value: string) => {
   if (!value || value === "Sin teléfono" || value === "Sin vendedor") {
@@ -39,14 +36,10 @@ const formatPhone = (value: string) => {
 };
 
 const formatDate = (value: string | null) => {
-  if (!value) {
-    return "Sin fecha";
-  }
+  if (!value) return "Sin fecha";
 
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Sin fecha";
-  }
+  if (Number.isNaN(date.getTime())) return "Sin fecha";
 
   return new Intl.DateTimeFormat("es-MX", {
     dateStyle: "long",
@@ -54,35 +47,66 @@ const formatDate = (value: string | null) => {
   }).format(date);
 };
 
-const sanitizePhone = (value: string) => value.replace(/[^\d]/g, "");
+const sanitizePhone = (value?: string) => (value ? value.replace(/[^\d]/g, "") : "");
 
 export default function EditSolicitudPage() {
   const params = useParams();
   const telephoneParam = params.telephone as string;
+  const normalizedParam = sanitizePhone(telephoneParam);
   const { solicitudes, status, errorMessage, fetchSolicitudes } = useSolicitudes();
+  const {
+    patients,
+    status: patientsStatus,
+    errorMessage: patientsError,
+    fetchPatients,
+  } = usePatients();
+  const {
+    methods,
+    status: methodsStatus,
+    errorMessage: methodsError,
+    fetchMethods,
+  } = usePaymentMethods();
+  const {
+    prescriptions,
+    status: prescriptionsStatus,
+    errorMessage: prescriptionsError,
+    fetchPrescriptions,
+  } = useMedicalPrescriptions();
+  const [activeStep, setActiveStep] = useState<StepId>(STEPS[0].id);
 
   const solicitud = useMemo(() => {
     return solicitudes.find((item) => {
       const contact = sanitizePhone(item.contactPhone);
-      const vendor = sanitizePhone(item.vendorPhone);
-      return contact === telephoneParam || vendor === telephoneParam || item.id === telephoneParam;
+      return contact === normalizedParam;
     });
-  }, [solicitudes, telephoneParam]);
+  }, [solicitudes, normalizedParam]);
+
+  const patient = useMemo(() => {
+    return patients.find((item) => sanitizePhone(item.phone) === normalizedParam);
+  }, [patients, normalizedParam]);
+
+  const paymentMethod = useMemo(() => {
+    return methods.find((item) => sanitizePhone(item.phone) === normalizedParam);
+  }, [methods, normalizedParam]);
+
+  const prescription = useMemo(() => {
+    return prescriptions.find((item) => sanitizePhone(item.phone) === normalizedParam);
+  }, [prescriptions, normalizedParam]);
 
   if (status === "loading") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F7F4F1] text-center">
-        <Loader2 className="h-10 w-10 animate-spin text-[#9B7CB8]" />
-        <p className="mt-4 text-sm text-muted-foreground">Preparando formulario…</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F5F0E8] text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-[#7B5C45]" />
+        <p className="mt-4 text-sm text-[#666]">Preparando formulario…</p>
       </div>
     );
   }
 
   if (status === "error") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F7F4F1] text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F5F0E8] text-center">
         <p className="text-lg font-medium text-red-600">{errorMessage}</p>
-        <Button onClick={fetchSolicitudes} className="bg-[#9B7CB8] text-white">
+        <Button onClick={fetchSolicitudes} className="bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
           Reintentar
         </Button>
       </div>
@@ -91,16 +115,16 @@ export default function EditSolicitudPage() {
 
   if (!solicitud) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#F7F4F1] text-center">
-        <p className="text-lg font-semibold text-[#3A2D28]">No encontramos esta solicitud.</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#F5F0E8] text-center">
+        <p className="text-lg font-semibold text-[#2C2C2C]">No encontramos esta solicitud.</p>
         <div className="flex gap-3">
           <Link href="/solicitudes">
-            <Button className="bg-[#8A5A44] text-white">
+            <Button className="bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
               <Undo2 className="mr-2 h-4 w-4" /> Regresar
             </Button>
           </Link>
           <Link href={`/solicitudes/${telephoneParam}`}>
-            <Button variant="outline" className="border-[#8A6BA7] text-[#8A6BA7]">
+            <Button variant="outline" className="border-[#7B5C45] text-[#7B5C45]">
               Ver detalle
             </Button>
           </Link>
@@ -109,172 +133,354 @@ export default function EditSolicitudPage() {
     );
   }
 
-  const viewHref = `/solicitudes/${telephoneParam}`;
+  const viewHref = `/solicitudes/${normalizedParam}`;
 
   return (
-    <div className="min-h-screen bg-[#F7F4F1] text-[#2F2A25]">
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
-          <div>
-            <p className="text-sm uppercase tracking-wide text-[#B26E3C]">Actualizar prueba</p>
-            <h1 className="text-3xl font-semibold text-[#2F2A25]">Envío de muestra a laboratorio</h1>
-            <p className="text-sm text-[#7B6B57]">Todos los campos marcados con * son obligatorios.</p>
-          </div>
-          <div className="flex gap-3">
-            <Link href="/solicitudes">
-              <Button variant="outline" className="border-[#B26E3C] text-[#B26E3C]">
-                Listar
-              </Button>
-            </Link>
-            <Link href={viewHref}>
-              <Button className="bg-[#8A5A44] text-white">
-                <Eye className="mr-2 h-4 w-4" /> Ver
-              </Button>
-            </Link>
+    <div className="min-h-screen bg-[#F5F0E8] text-[#2C2C2C]">
+      <header className="bg-white py-8">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-4xl font-semibold text-[#3C4858]">Actualizar prueba</h1>
+            </div>
+            <div className="flex gap-3">
+              <Link href="/solicitudes">
+                <Button className="bg-[#7B5C45] px-4 py-2 text-sm font-medium text-white hover:bg-[#6A4D38]">
+                  Listar
+                </Button>
+              </Link>
+              <Link href={viewHref}>
+                <Button className="flex items-center gap-2 bg-[#7B5C45] px-4 py-2 text-sm font-medium text-white hover:bg-[#6A4D38]">
+                  Ver
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 lg:flex-row">
-        <aside className="sticky top-10 w-full self-start rounded-3xl border border-[#E5DBCE] bg-white p-6 shadow-sm lg:w-[30%]">
-          <nav className="space-y-4">
-            {STEP_LABELS.map((step) => (
-              <StepIndicator key={step} label={step} />
-            ))}
-          </nav>
-        </aside>
+      <main className="mx-auto max-w-7xl px-6 py-8">
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold text-[#2C2C2C]">
+            Envío de muestra a laboratorio / Servicio: Enviado a laboratorio
+          </h2>
+          <p className="mt-1 text-sm italic text-[#666]">
+            Todos los campos marcados con un * son obligatorios.
+          </p>
+        </div>
 
-        <section className="flex-1 space-y-8 lg:w-[70%]">
-          <Card className="border-[#E4D4C8] shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#3A2D28]">Solicitud del pedido</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Información principal del médico solicitante y fechas clave.
-              </p>
-            </CardHeader>
-            <CardContent className="grid gap-6 md:grid-cols-2">
-              <Field label="Paciente">
-                <div className="rounded-xl border border-[#E4D4C8] bg-white px-4 py-3 text-sm font-semibold uppercase tracking-wide text-[#3A2D28]">
-                  {solicitud.patient}
-                </div>
-              </Field>
-              <Field label="Especialista médico *">
-                <Select defaultValue={solicitud.doctor}>
-                  <SelectTrigger className="border-[#E4D4C8] bg-[#F8F4EE]">
-                    <SelectValue placeholder="Selecciona" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={solicitud.doctor}>{solicitud.doctor}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Laboratorio *">
-                <Input placeholder="Tempus Labs, Inc" className="border-[#E4D4C8] bg-[#F8F4EE]" />
-              </Field>
-              <Field label="Creado en">
-                <div className="flex items-center gap-2 rounded-xl border border-[#E4D4C8] bg-white px-4 py-3 text-sm text-[#3A2D28]">
-                  <CalendarClock className="h-4 w-4 text-[#B26E3C]" />
-                  {formatDate(solicitud.createdAt)}
-                </div>
-              </Field>
-              <Field label="Teléfono del solicitante">
-                <div className="flex items-center gap-2 rounded-xl border border-[#E4D4C8] bg-white px-4 py-3 text-sm text-[#3A2D28]">
-                  <Phone className="h-4 w-4 text-[#B26E3C]" />
-                  {formatPhone(solicitud.vendorPhone)}
-                </div>
-              </Field>
-              <Field label="Mensaje *">
-                <Textarea placeholder="Agrega instrucciones o comentarios" className="border-[#E4D4C8] bg-[#F8F4EE]" rows={3} />
-              </Field>
-            </CardContent>
-          </Card>
+        <div className="flex flex-col gap-8 lg:flex-row">
+          <aside className="w-full lg:w-[280px]">
+            <nav className="rounded-lg bg-white p-4 shadow-sm">
+              {STEPS.map((step) => (
+                <StepIndicator
+                  key={step.id}
+                  label={step.label}
+                  active={activeStep === step.id}
+                  onClick={() => setActiveStep(step.id)}
+                />
+              ))}
+            </nav>
+          </aside>
 
-          <Card className="border-[#E4D4C8] shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#3A2D28]">Datos del paciente</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Información básica del paciente para referencia rápida.
-              </p>
-            </CardHeader>
-            <CardContent className="grid gap-6 md:grid-cols-2">
-              <Field label="Nombre completo">
-                <Input defaultValue={solicitud.patient} className="border-[#E4D4C8] bg-[#F8F4EE]" />
-              </Field>
-              <Field label="Padecimiento">
-                <Input defaultValue={solicitud.condition} className="border-[#E4D4C8] bg-[#F8F4EE]" />
-              </Field>
-              <Field label="Teléfono de contacto">
-                <Input defaultValue={formatPhone(solicitud.contactPhone)} className="border-[#E4D4C8] bg-[#F8F4EE]" />
-              </Field>
-              <Field label="Correo electrónico">
-                <Input placeholder="correo@paciente.com" className="border-[#E4D4C8] bg-[#F8F4EE]" />
-              </Field>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#E4D4C8] shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#3A2D28]">Gestión de aseguradora</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Define quién cubrirá el servicio y sus referencias.
-              </p>
-            </CardHeader>
-            <CardContent className="grid gap-6 md:grid-cols-2">
-              <Field label="¿Quién paga el servicio?">
-                <Select>
-                  <SelectTrigger className="border-[#E4D4C8] bg-[#F8F4EE]">
-                    <SelectValue placeholder="== Seleccione una opción ==" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="aseguradora">Aseguradora</SelectItem>
-                    <SelectItem value="paciente">Paciente</SelectItem>
-                    <SelectItem value="empresa">Empresa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Referencia de póliza">
-                <Input placeholder="AXA-123456" className="border-[#E4D4C8] bg-[#F8F4EE]" />
-              </Field>
-              <Field label="Comentarios">
-                <Textarea rows={4} placeholder="Notas internas sobre la aseguradora" className="border-[#E4D4C8] bg-[#F8F4EE]" />
-              </Field>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#E4D4C8] shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#3A2D28]">Receta médica</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Adjunta la receta o indicaciones del médico tratante.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-xl border border-dashed border-[#C8B6E2] bg-[#FBF8F4] p-6 text-center">
-                <p className="text-sm text-[#7B6B57]">
-                  Arrastra y suelta archivos aquí o <span className="font-semibold text-[#B26E3C]">haz clic para cargar</span>.
-                </p>
-                <p className="text-xs text-muted-foreground">Formatos permitidos: PDF, JPG, PNG. Máx 10MB.</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-[#F5ECE2] text-[#8A5A44] border border-[#E4D4C8]">Receta.pdf</Badge>
-                <Badge variant="outline" className="text-[#8A6BA7] border-[#C8B6E2]">
-                  + Agregar otro archivo
-                </Badge>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" className="border-[#B26E3C] text-[#B26E3C]">
-                  Cancelar
-                </Button>
-                <Button className="bg-[#8A5A44] text-white">
-                  <Pencil className="mr-2 h-4 w-4" /> Guardar cambios
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+          <section className="flex-1">
+            {renderActiveStep({
+              solicitud,
+              activeStep,
+              patient,
+              patientStatus: patientsStatus,
+              patientError: patientsError,
+              retryPatient: fetchPatients,
+              paymentMethod,
+              paymentStatus: methodsStatus,
+              paymentError: methodsError,
+              retryPayment: fetchMethods,
+              prescription,
+              prescriptionStatus: prescriptionsStatus,
+              prescriptionError: prescriptionsError,
+              retryPrescription: fetchPrescriptions,
+            })}
+          </section>
+        </div>
       </main>
     </div>
   );
+}
+
+type RenderStepProps = {
+  solicitud: Solicitud;
+  activeStep: StepId;
+  patient?: Patient;
+  patientStatus: string;
+  patientError: string | null;
+  retryPatient: () => void;
+  paymentMethod?: PaymentMethod;
+  paymentStatus: string;
+  paymentError: string | null;
+  retryPayment: () => void;
+  prescription?: MedicalPrescription;
+  prescriptionStatus: string;
+  prescriptionError: string | null;
+  retryPrescription: () => void;
+};
+
+function renderActiveStep({
+  solicitud,
+  activeStep,
+  patient,
+  patientStatus,
+  patientError,
+  retryPatient,
+  paymentMethod,
+  paymentStatus,
+  paymentError,
+  retryPayment,
+  prescription,
+  prescriptionStatus,
+  prescriptionError,
+  retryPrescription,
+}: RenderStepProps) {
+  switch (activeStep) {
+    case "order":
+      return (
+        <div className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field label="Paciente">
+              <div className="rounded-md border-l-4 border-l-[#C37C4D] bg-white px-4 py-3 text-sm font-semibold uppercase text-[#2C2C2C] shadow-sm">
+                {solicitud.patient}
+              </div>
+            </Field>
+            <Field label="Especialista médico *">
+              <Select defaultValue={solicitud.doctor}>
+                <SelectTrigger className="rounded-md border-l-4 border-l-[#C37C4D] bg-[#E8E3DB] shadow-sm">
+                  <SelectValue placeholder="Selecciona" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={solicitud.doctor}>{solicitud.doctor}</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field label="Tipo de prueba">
+              <ReadOnlyField value={solicitud.testType} />
+            </Field>
+            <Field label="Padecimiento">
+              <ReadOnlyField value={solicitud.condition} />
+            </Field>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field label="Teléfono de contacto">
+              <ReadOnlyField value={formatPhone(solicitud.contactPhone)} />
+            </Field>
+            <Field label="Teléfono del vendedor">
+              <ReadOnlyField value={formatPhone(solicitud.vendorPhone)} />
+            </Field>
+          </div>
+
+          <Field label="Fecha de creación">
+            <ReadOnlyField value={formatDate(solicitud.createdAt)} />
+          </Field>
+
+          <Field label="Laboratorio *">
+            <div className="text-base text-[#5C6B9A]">Tempus Labs, Inc</div>
+          </Field>
+
+       
+
+        
+        </div>
+      );
+    case "patient":
+      return (
+        <div className="space-y-6">
+            {patientStatus === "loading" && (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[#7B5C45]" />
+                <p className="text-sm text-[#666]">Cargando paciente…</p>
+              </div>
+            )}
+
+            {patientStatus === "error" && (
+              <div className="flex flex-col items-center gap-4 py-10 text-center">
+                <p className="text-sm font-medium text-red-600">{patientError}</p>
+                <Button onClick={retryPatient} className="bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
+                  Reintentar
+                </Button>
+              </div>
+            )}
+
+            {patientStatus === "ready" && !patient && (
+              <div className="py-10 text-center text-sm text-[#666]">
+                No encontramos información del paciente para este número.
+              </div>
+            )}
+
+            {patientStatus === "ready" && patient && (
+              <div className="grid gap-6 md:grid-cols-2">
+                <Field label="Nombre(s)">
+                  <ReadOnlyField value={patient.firstName} />
+                </Field>
+                <Field label="Apellidos">
+                  <ReadOnlyField value={patient.lastName} />
+                </Field>
+                <Field label="Teléfono">
+                  <ReadOnlyField value={formatPhone(patient.phone)} />
+                </Field>
+                <Field label="Género biológico">
+                  <ReadOnlyField value={patient.gender} />
+                </Field>
+                <Field label="CURP">
+                  <ReadOnlyField value={patient.curp} />
+                </Field>
+                <Field label="Fecha de nacimiento">
+                  <ReadOnlyField value={patient.birthDate} />
+                </Field>
+                <Field label="País">
+                  <ReadOnlyField value={patient.country} />
+                </Field>
+                <Field label="Estado">
+                  <ReadOnlyField value={patient.state} />
+                </Field>
+                <Field label="Municipio / Delegación">
+                  <ReadOnlyField value={patient.municipality} />
+                </Field>
+                <Field label="Colonia">
+                  <ReadOnlyField value={patient.neighborhood} />
+                </Field>
+                <Field label="Código postal">
+                  <ReadOnlyField value={patient.postalCode} />
+                </Field>
+                <Field label="Domicilio completo" >
+                  <ReadOnlyField value={patient.address} multiLine />
+                </Field>
+                {patient.ineUrl ? (
+                  <Field label="Identificación (INE)">
+                    <a
+                      href={patient.ineUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center text-sm font-medium text-[#8A6BA7] hover:underline"
+                    >
+                      Ver documento
+                    </a>
+                  </Field>
+                ) : null}
+              </div>
+            )}
+        </div>
+      );
+    case "insurance":
+      return (
+        <div className="space-y-6">
+            {paymentStatus === "loading" && (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[#7B5C45]" />
+                <p className="text-sm text-[#666]">Cargando método de pago…</p>
+              </div>
+            )}
+
+            {paymentStatus === "error" && (
+              <div className="flex flex-col items-center gap-4 py-10 text-center">
+                <p className="text-sm font-medium text-red-600">{paymentError}</p>
+                <Button onClick={retryPayment} className="bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
+                  Reintentar
+                </Button>
+              </div>
+            )}
+
+            {paymentStatus === "ready" && !paymentMethod && (
+              <div className="py-10 text-center text-sm text-[#666]">
+                No registramos información de aseguradora para este número.
+              </div>
+            )}
+
+            {paymentStatus === "ready" && paymentMethod && (
+              <div className="grid gap-6 md:grid-cols-2">
+                <Field label="Método de pago">
+                  <ReadOnlyField value={paymentMethod.method} />
+                </Field>
+                <Field label="Nombre de la aseguradora">
+                  <ReadOnlyField value={paymentMethod.insurerName} />
+                </Field>
+                <Field label="Documento entregado">
+                  <ReadOnlyField value={paymentMethod.document} />
+                </Field>
+                <Field label="Soporte">
+                  {paymentMethod.documentUrl ? (
+                    <a
+                      href={paymentMethod.documentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center text-sm font-medium text-[#8A6BA7] hover:underline"
+                    >
+                      Descargar documento
+                    </a>
+                  ) : (
+                    <ReadOnlyField value="Sin archivo" />
+                  )}
+                </Field>
+              </div>
+            )}
+        </div>
+      );
+    case "prescription":
+      return (
+        <div className="space-y-6">
+            {prescriptionStatus === "loading" && (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[#7B5C45]" />
+                <p className="text-sm text-[#666]">Cargando receta…</p>
+              </div>
+            )}
+
+            {prescriptionStatus === "error" && (
+              <div className="flex flex-col items-center gap-4 py-10 text-center">
+                <p className="text-sm font-medium text-red-600">{prescriptionError}</p>
+                <Button onClick={retryPrescription} className="bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
+                  Reintentar
+                </Button>
+              </div>
+            )}
+
+            {prescriptionStatus === "ready" && !prescription && (
+              <div className="py-10 text-center text-sm text-[#666]">
+                No hay receta registrada para este número.
+              </div>
+            )}
+
+            {prescriptionStatus === "ready" && prescription && (
+              <div className="space-y-6">
+                <Field label="Diagnóstico / Indicaciones">
+                  <ReadOnlyField value={prescription.diagnosis} multiLine />
+                </Field>
+                <Field label="Fecha de emisión">
+                  <ReadOnlyField value={prescription.issuedAt} />
+                </Field>
+                <Field label="Documento">
+                  {prescription.prescriptionUrl ? (
+                    <a
+                      href={prescription.prescriptionUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center text-sm font-medium text-[#7B5C45] hover:underline"
+                    >
+                      Ver receta
+                    </a>
+                  ) : (
+                    <ReadOnlyField value="Sin archivo" />
+                  )}
+                </Field>
+              </div>
+            )}
+        </div>
+      );
+    default:
+      return null;
+  }
 }
 
 type FieldProps = {
@@ -283,10 +489,34 @@ type FieldProps = {
 };
 
 function Field({ label, children }: FieldProps) {
+  const hasAsterisk = label.includes("*");
+  const labelText = label.replace("*", "").trim();
+
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#B26E3C]">{label}</p>
+      <p className="text-sm font-semibold text-[#2C2C2C]">
+        {labelText}
+        {hasAsterisk && <span className="ml-1 text-red-600">*</span>}
+      </p>
       {children}
+    </div>
+  );
+}
+
+type ReadOnlyFieldProps = {
+  value: string;
+  multiLine?: boolean;
+};
+
+function ReadOnlyField({ value, multiLine = false }: ReadOnlyFieldProps) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-[#E4D4C8] bg-white px-4 py-3 text-sm text-[#3A2D28]",
+        multiLine && "min-h-[80px]"
+      )}
+    >
+      {value || "-"}
     </div>
   );
 }
@@ -294,13 +524,22 @@ function Field({ label, children }: FieldProps) {
 type StepProps = {
   label: string;
   icon?: LucideIcon;
+  active?: boolean;
+  onClick?: () => void;
 };
 
-function StepIndicator({ label, icon: Icon = CheckCircle2 }: StepProps) {
+function StepIndicator({ label, icon: Icon = CheckCircle2, active = false, onClick }: StepProps) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-[#E4D4C8] bg-[#FFFBF7] px-4 py-3">
-      <span className="text-sm font-medium text-[#3A2D28]">{label}</span>
-      <Icon className="h-5 w-5 text-[#C37C4D]" />
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center justify-between px-4 py-2.5 text-left transition",
+        active ? "text-[#2C2C2C]" : "text-[#666]"
+      )}
+    >
+      <span className={cn("text-sm", active ? "font-medium" : "font-normal")}>{label}</span>
+      <Icon className={cn("h-5 w-5 fill-[#C9A049] text-[#C9A049]")} />
+    </button>
   );
 }
