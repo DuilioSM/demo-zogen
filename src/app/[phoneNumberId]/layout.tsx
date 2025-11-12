@@ -25,7 +25,7 @@ export default function DashboardLayout({
       <header className="border-b bg-white shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <Link href="/">
+            <Link href={`/${phoneNumberId}`}>
               <Button variant="ghost" size="sm" className="hover:bg-purple-50">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Volver

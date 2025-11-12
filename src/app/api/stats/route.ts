@@ -48,12 +48,10 @@ export async function GET(request: Request) {
     const contactsList = Object.values(contacts);
 
     const statusCounts: Record<ClientStatus, number> = {
-      "Datos del paciente": 0,
-      "Recolección documentación": 0,
-      "gestión aseguradora": 0,
-      "Solicitud de muestra": 0,
-      "Validación de muestra": 0,
-      "preparacion en laboratorio": 0,
+      "Cotizando": 0,
+      "Documentación": 0,
+      "Trámite Aprobado": 0,
+      "Muestra Tomada": 0,
     };
 
     contactsList.forEach((contact) => {

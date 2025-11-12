@@ -25,12 +25,10 @@ import type { MediaData } from '@kapso/whatsapp-cloud-api';
 import type { Contact, ClientStatus } from '@/types/whatsapp';
 
 const STATUS_OPTIONS: ClientStatus[] = [
-  "Datos del paciente",
-  "Recolección documentación",
-  "gestión aseguradora",
-  "Solicitud de muestra",
-  "Validación de muestra",
-  "preparacion en laboratorio",
+  "Cotizando",
+  "Documentación",
+  "Trámite Aprobado",
+  "Muestra Tomada",
 ];
 
 type Message = {

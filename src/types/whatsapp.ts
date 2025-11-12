@@ -52,12 +52,10 @@ export type TemplateParameterInfo = {
 export type TemplateParameters = string[] | Record<string, string>;
 
 export type ClientStatus =
-  | "Datos del paciente"
-  | "Recolección documentación"
-  | "gestión aseguradora"
-  | "Solicitud de muestra"
-  | "Validación de muestra"
-  | "preparacion en laboratorio";
+  | "Cotizando"
+  | "Documentación"
+  | "Trámite Aprobado"
+  | "Muestra Tomada";
 
 export type Contact = {
   phoneNumber: string;
