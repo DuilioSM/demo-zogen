@@ -15,6 +15,11 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const phoneNumberId = params.phoneNumberId as string;
 
+  // Si la ruta es de solicitudes, no aplicar este layout
+  if (phoneNumberId === 'solicitudes') {
+    return <>{children}</>;
+  }
+
   const isConversationsActive = pathname?.includes('/conversations');
   const isKanbanActive = pathname?.includes('/kanban');
   const isDashboard = !isConversationsActive && !isKanbanActive;

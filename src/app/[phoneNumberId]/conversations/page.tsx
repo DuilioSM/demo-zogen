@@ -32,7 +32,7 @@ export default function ConversationsPage() {
   };
 
   return (
-    <div className="h-screen flex">
+    <div className="h-full flex">
       <ConversationList
         ref={conversationListRef}
         onSelectConversation={setSelectedConversation}
