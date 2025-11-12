@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "WhatsApp inbox",
+  title: "Agile Zogen",
   description: "A simple WhatsApp inbox built with Next.js",
 };
 

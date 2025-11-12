@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -220,9 +221,16 @@ export default function Home() {
                     Proyecto Agile: Supervisión de vendedores
                   </h1>
                 </div>
-                <Button variant="outline" onClick={handleLogout}>
-                  Cerrar sesión
-                </Button>
+                <div className="flex gap-3">
+                  <Link href="/solicitudes">
+                    <Button className="bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
+                      Ir a zogen FastApp
+                    </Button>
+                  </Link>
+                  <Button variant="outline" onClick={handleLogout}>
+                    Cerrar sesión
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
