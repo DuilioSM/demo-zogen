@@ -50,3 +50,26 @@ export type TemplateParameterInfo = {
 };
 
 export type TemplateParameters = string[] | Record<string, string>;
+
+export type ClientStatus =
+  | "Datos del paciente"
+  | "Recolección documentación"
+  | "gestión aseguradora"
+  | "Solicitud de muestra"
+  | "Validación de muestra"
+  | "preparacion en laboratorio";
+
+export type Contact = {
+  phoneNumber: string;
+  contactName?: string;
+  status?: ClientStatus;
+  updatedAt?: string;
+};
+
+export type PhoneNumberInfo = {
+  id: string;
+  phoneNumber: string;
+  displayName?: string;
+  isConnected: boolean;
+  realPhoneNumberId?: string; // ID real al que redirigir (para vendedores dummy)
+};

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { format, isValid, isToday, isYesterday, differenceInHours } from 'date-fns';
-import { RefreshCw, Paperclip, Send, X, AlertCircle, MessageSquare, XCircle, ListTree, ArrowLeft } from 'lucide-react';
+import { RefreshCw, Paperclip, Send, X, AlertCircle, MessageSquare, XCircle, ListTree, ArrowLeft, User, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MediaMessage } from '@/components/media-message';
 import { TemplateSelectorDialog } from '@/components/template-selector-dialog';
@@ -13,7 +13,25 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { MediaData } from '@kapso/whatsapp-cloud-api';
+import type { Contact, ClientStatus } from '@/types/whatsapp';
+
+const STATUS_OPTIONS: ClientStatus[] = [
+  "Datos del paciente",
+  "Recolección documentación",
+  "gestión aseguradora",
+  "Solicitud de muestra",
+  "Validación de muestra",
+  "preparacion en laboratorio",
+];
 
 type Message = {
   id: string;
@@ -133,6 +151,9 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [showInteractiveDialog, setShowInteractiveDialog] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
+  const [showDetailsPanel, setShowDetailsPanel] = useState(true);
+  const [contactInfo, setContactInfo] = useState<Contact | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,6 +161,46 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const fetchContactInfo = useCallback(async () => {
+    if (!phoneNumber || !conversationId) return;
+
+    try {
+      const response = await fetch(`/api/contacts?phoneNumberId=${conversationId.split('_')[0]}`);
+      if (response.ok) {
+        const contacts: Contact[] = await response.json();
+        const contact = contacts.find(c => c.phoneNumber === phoneNumber);
+        setContactInfo(contact || null);
+      }
+    } catch (error) {
+      console.error('Error fetching contact info:', error);
+    }
+  }, [phoneNumber, conversationId]);
+
+  const updateContactStatus = async (status: ClientStatus) => {
+    if (!phoneNumber || !conversationId) return;
+
+    setUpdatingStatus(true);
+    try {
+      const response = await fetch('/api/contacts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber,
+          status,
+          contactName: contactName || undefined,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchContactInfo();
+      }
+    } catch (error) {
+      console.error('Error updating contact status:', error);
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
 
   const fetchMessages = useCallback(async () => {
@@ -185,8 +246,9 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
     if (conversationId) {
       setLoading(true);
       fetchMessages();
+      fetchContactInfo();
     }
-  }, [conversationId, fetchMessages]);
+  }, [conversationId, fetchMessages, fetchContactInfo]);
 
   useEffect(() => {
     // Only auto-scroll if user is near bottom
@@ -357,40 +419,53 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
 
   return (
     <div className={cn(
-      "flex-1 flex flex-col bg-[#efeae2]",
+      "flex-1 flex bg-[#efeae2]",
       !isVisible && "hidden md:flex"
     )}>
-      <div className="p-3 border-b border-[#d1d7db] bg-[#f0f2f5]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            {onBack && (
+      {/* Main conversation area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="p-3 border-b border-[#d1d7db] bg-[#f0f2f5]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {onBack && (
+                <Button
+                  onClick={onBack}
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden text-[#667781] hover:bg-[#f0f2f5] flex-shrink-0"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-medium text-[#111b21] truncate">{contactName || phoneNumber || 'Conversation'}</h2>
+                {contactName && phoneNumber && (
+                  <p className="text-xs text-[#667781] truncate">{phoneNumber}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
               <Button
-                onClick={onBack}
+                onClick={() => setShowDetailsPanel(!showDetailsPanel)}
                 variant="ghost"
                 size="icon"
-                className="md:hidden text-[#667781] hover:bg-[#f0f2f5] flex-shrink-0"
+                className="text-[#667781] hover:bg-[#f0f2f5]"
+                title="Toggle details panel"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <Info className="h-4 w-4" />
               </Button>
-            )}
-            <div className="flex-1 min-w-0">
-              <h2 className="text-base font-medium text-[#111b21] truncate">{contactName || phoneNumber || 'Conversation'}</h2>
-              {contactName && phoneNumber && (
-                <p className="text-xs text-[#667781] truncate">{phoneNumber}</p>
-              )}
+              <Button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                variant="ghost"
+                size="icon"
+                className="text-[#667781] hover:bg-[#f0f2f5]"
+              >
+                <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+              </Button>
             </div>
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            variant="ghost"
-            size="icon"
-            className="text-[#667781] hover:bg-[#f0f2f5]"
-          >
-            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-          </Button>
         </div>
-      </div>
 
       <ScrollArea ref={messagesContainerRef} className="flex-1 h-0 p-4">
         <div className="max-w-[900px] mx-auto">
@@ -650,6 +725,87 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
         phoneNumber={phoneNumber}
         onMessageSent={fetchMessages}
       />
+      </div>
+
+      {/* Details Panel */}
+      {showDetailsPanel && (
+        <div className="w-80 bg-white border-l border-[#d1d7db] flex-shrink-0 hidden lg:block">
+          <div className="h-full overflow-y-auto">
+            <div className="p-4 border-b border-[#d1d7db] bg-[#f0f2f5]">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-14 w-14 rounded-full bg-[#9B7CB8] flex items-center justify-center text-white text-xl font-semibold">
+                  {contactName ? contactName[0].toUpperCase() : phoneNumber?.[phoneNumber.length - 1] || 'U'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-medium text-[#111b21] truncate">
+                    {contactName || 'Sin nombre'}
+                  </h3>
+                  <p className="text-xs text-[#667781] truncate">{phoneNumber}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Información del Paciente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-xs text-[#667781] font-medium">Nombre</label>
+                    <p className="text-sm text-[#111b21] mt-1">{contactName || 'Sin nombre'}</p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-[#667781] font-medium">Teléfono</label>
+                    <p className="text-sm text-[#111b21] mt-1 font-mono">{phoneNumber}</p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-[#667781] font-medium mb-2 block">Estado en el Proceso</label>
+                    <Select
+                      value={contactInfo?.status || ''}
+                      onValueChange={(value) => updateContactStatus(value as ClientStatus)}
+                      disabled={updatingStatus}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleccionar estado">
+                          {contactInfo?.status || 'Sin estado'}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {contactInfo?.updatedAt && (
+                    <div>
+                      <label className="text-xs text-[#667781] font-medium">Última actualización</label>
+                      <p className="text-sm text-[#111b21] mt-1">
+                        {new Date(contactInfo.updatedAt).toLocaleDateString('es-ES', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

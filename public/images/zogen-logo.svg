@@ -1,0 +1,7 @@
+<svg width="300" height="100" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="100" fill="#9B7CB8"/>
+  <text x="30" y="65" font-family="Arial, sans-serif" font-size="48" font-weight="300" fill="white">zogen</text>
+  <circle cx="260" cy="50" r="35" fill="white"/>
+  <text x="235" y="60" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#9B7CB8">10</text>
+  <text x="225" y="75" font-family="Arial, sans-serif" font-size="10" fill="#9B7CB8">años</text>
+</svg>

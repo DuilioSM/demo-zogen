@@ -9,6 +9,11 @@ type TemplatePayload = TemplateMessageInput['template'];
 type TemplateBodyParameter = NonNullable<TemplateSendInput['body']>[number];
 type TemplateHeaderParameter = Extract<NonNullable<TemplateSendInput['header']>, { type: 'text' }>;
 type TemplateButtonParameter = Extract<NonNullable<TemplateSendInput['buttons']>[number], { subType: 'url' }>;
+type ButtonParameterItem = {
+  type: 'text';
+  text: string;
+  parameter_name: string;
+};
 
 export async function POST(request: Request) {
   try {
@@ -88,7 +93,7 @@ export async function POST(request: Request) {
             type: 'text',
             text: textValue,
             parameter_name: paramDef.name
-          } as any);
+          } as ButtonParameterItem);
         }
       });
 
