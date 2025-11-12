@@ -17,13 +17,45 @@ import { Loader2 } from 'lucide-react';
 import type { Contact, ClientStatus } from '@/types/whatsapp';
 
 const STATUS_OPTIONS: ClientStatus[] = [
-  "Datos del paciente",
-  "Recolección documentación",
-  "gestión aseguradora",
-  "Solicitud de muestra",
-  "Validación de muestra",
-  "preparacion en laboratorio",
+  "Cotizando",
+  "Documentación",
+  "Trámite Aprobado",
+  "Muestra Tomada",
 ];
+
+const STATUS_COLORS: Record<ClientStatus, string> = {
+  Cotizando: 'bg-purple-50 border-purple-100',
+  Documentación: 'bg-sky-50 border-sky-100',
+  'Trámite Aprobado': 'bg-emerald-50 border-emerald-100',
+  'Muestra Tomada': 'bg-amber-50 border-amber-100',
+};
+
+const DUMMY_LEADS = [
+  'Ana Sofía Domínguez',
+  'Luis Fernando Aguilar',
+  'Mariana Torres García',
+  'Carlos Alberto Medina',
+  'Regina Hernández Soto',
+  'Diego Armando Salas',
+  'Valeria Ortiz Peña',
+  'Alejandro Cruz Ramírez',
+  'Paola Jiménez Galindo',
+  'Ricardo Núñez Padilla',
+  'Fernanda Ruiz Esquivel',
+  'Emilio García Cárdenas',
+  'Andrea Cabrera Núñez',
+  'Sebastián Varela Campos',
+  'Renata Solís Figueroa',
+  'Mauricio Camacho Lara',
+  'Isabela Navarro Moguel',
+  'Jorge Eduardo Salazar',
+  'Lucía Serrano Ibarra',
+  'Héctor Manuel Ureña',
+];
+
+
+
+
 
 type Conversation = {
   id: string;
@@ -48,6 +80,18 @@ export default function KanbanPage() {
       const contactsResponse = await fetch(`/api/contacts?phoneNumberId=${phoneNumberId}`);
       if (contactsResponse.ok) {
         const contactsData = await contactsResponse.json();
+        if (contactsData.length < 20) {
+          const fillerCount = 20 - contactsData.length;
+          for (let i = 0; i < fillerCount; i++) {
+            const index = contactsData.length + i;
+            contactsData.push({
+              phoneNumber: `demo-${index}` as const,
+              contactName: DUMMY_LEADS[index % DUMMY_LEADS.length],
+              status: STATUS_OPTIONS[index % STATUS_OPTIONS.length],
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
         setContacts(contactsData);
       }
 
@@ -152,8 +196,8 @@ export default function KanbanPage() {
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {/* Columna de Sin Estado */}
-        <div className="flex-shrink-0 w-80">
-          <Card className="h-full flex flex-col">
+        <div className="flex-shrink-0 w-72">
+          <Card className="h-full flex flex-col border border-gray-200 bg-gray-50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
                 <span>Sin Estado Asignado</span>
@@ -166,7 +210,7 @@ export default function KanbanPage() {
               <ScrollArea className="h-[calc(100vh-280px)]">
                 <div className="space-y-2 p-4 pt-0">
                   {getConversationsWithoutStatus().map(conv => (
-                    <Card key={conv.id} className="p-3 hover:shadow-md transition-shadow">
+                    <Card key={conv.id} className="p-3 hover:shadow-md transition-shadow bg-white/90 border border-white">
                       <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10">
                           <AvatarFallback>
@@ -215,10 +259,19 @@ export default function KanbanPage() {
         {/* Columnas por estado */}
         {STATUS_OPTIONS.map(status => {
           const conversationsInStatus = getConversationsByStatus(status);
+          const contactsInStatus = contacts.filter(c => c.status === status);
+          const displayLeads = conversationsInStatus.length
+            ? conversationsInStatus
+            : contactsInStatus.map((contact, idx) => ({
+                id: `${contact.phoneNumber}-${idx}`,
+                phoneNumber: contact.phoneNumber,
+                contactName: contact.contactName,
+                lastActiveAt: contact.updatedAt ?? new Date().toISOString(),
+              }));
 
           return (
-            <div key={status} className="flex-shrink-0 w-80">
-              <Card className="h-full flex flex-col">
+            <div key={status} className="flex-shrink-0 w-72">
+              <Card className={`h-full flex flex-col border ${STATUS_COLORS[status]}`}>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium flex items-center justify-between">
                     <span className="line-clamp-2">{status}</span>
@@ -230,8 +283,8 @@ export default function KanbanPage() {
                 <CardContent className="flex-1 overflow-hidden p-0">
                   <ScrollArea className="h-[calc(100vh-280px)]">
                     <div className="space-y-2 p-4 pt-0">
-                      {conversationsInStatus.map(conv => (
-                        <Card key={conv.id} className="p-3 hover:shadow-md transition-shadow">
+                    {displayLeads.map(conv => (
+                      <Card key={conv.id} className="p-3 hover:shadow-md transition-shadow bg-white/90 border border-white">
                           <div className="flex items-start gap-3">
                             <Avatar className="h-10 w-10">
                               <AvatarFallback>
