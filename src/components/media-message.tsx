@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CRM_WHATSAPP_API_BASE } from '@/lib/constants';
 
 type Props = {
   mediaId: string;
@@ -24,7 +25,7 @@ export function MediaMessage({ mediaId, messageType, caption, filename, isOutbou
 
   useEffect(() => {
     // Set the media URL to point to our proxy endpoint
-    setMediaUrl(`/api/media/${mediaId}`);
+    setMediaUrl(`${CRM_WHATSAPP_API_BASE}/media/${mediaId}`);
     setLoading(false);
     setLoadFailed(false);
   }, [mediaId]);

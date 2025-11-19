@@ -64,7 +64,7 @@ export type Contact = {
   updatedAt?: string;
 };
 
-export type PhoneNumberInfo = {
+export type WhatsappChannelInfo = {
   id: string;
   phoneNumber: string;
   displayName?: string;

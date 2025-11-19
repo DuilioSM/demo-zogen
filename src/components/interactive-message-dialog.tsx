@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { CRM_WHATSAPP_API_BASE } from '@/lib/constants';
 
 type Button = {
   id: string;
@@ -96,7 +97,7 @@ export function InteractiveMessageDialog({
     setError(null);
 
     try {
-      const response = await fetch('/api/messages/interactive', {
+      const response = await fetch(`${CRM_WHATSAPP_API_BASE}/messages/interactive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

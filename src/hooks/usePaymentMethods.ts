@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { PaymentMethod } from "@/types/payment-method";
+import { CRM_ZOGEN_API_BASE } from "@/lib/constants";
 
 type Status = "idle" | "loading" | "ready" | "error";
 
@@ -14,7 +15,7 @@ export function usePaymentMethods(options: { autoFetch?: boolean } = {}) {
     setErrorMessage(null);
 
     try {
-      const response = await fetch("/api/payment-methods");
+      const response = await fetch(`${CRM_ZOGEN_API_BASE}/payment-methods`);
       if (!response.ok) {
         throw new Error("No se pudo obtener la información de métodos de pago");
       }

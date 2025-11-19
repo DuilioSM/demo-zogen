@@ -10,13 +10,14 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CRM_WHATSAPP_API_BASE } from '@/lib/constants';
 
 type Conversation = {
   id: string;
   phoneNumber: string;
   status: string;
   lastActiveAt: string;
-  phoneNumberId: string;
+  channelId: string;
   metadata?: Record<string, unknown>;
   contactName?: string;
   messagesCount?: number;
@@ -77,7 +78,7 @@ export const ConversationList = forwardRef<ConversationListRef, Props>(
 
   const fetchConversations = useCallback(async () => {
     try {
-      const response = await fetch('/api/conversations');
+      const response = await fetch(`${CRM_WHATSAPP_API_BASE}/conversations`);
       const data = await response.json();
       setConversations(data.data || []);
     } catch (error) {
@@ -114,7 +115,7 @@ export const ConversationList = forwardRef<ConversationListRef, Props>(
   useImperativeHandle(ref, () => ({
     refresh: async () => {
       setRefreshing(true);
-      const response = await fetch('/api/conversations');
+      const response = await fetch(`${CRM_WHATSAPP_API_BASE}/conversations`);
       const data = await response.json();
       const newConversations = data.data || [];
       setConversations(newConversations);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Patient } from "@/types/patient";
+import { CRM_ZOGEN_API_BASE } from "@/lib/constants";
 
 type Status = "idle" | "loading" | "ready" | "error";
 
@@ -14,7 +15,7 @@ export function usePatients(options: { autoFetch?: boolean } = {}) {
     setErrorMessage(null);
 
     try {
-      const response = await fetch("/api/patients");
+      const response = await fetch(`${CRM_ZOGEN_API_BASE}/patients`);
       if (!response.ok) {
         throw new Error("No se pudo obtener la información de pacientes");
       }

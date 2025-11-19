@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { Template, TemplateParameterInfo } from '@/types/whatsapp';
 import { getTemplateParameters } from '@/lib/template-parser';
+import { CRM_WHATSAPP_API_BASE } from '@/lib/constants';
 import { TemplateParametersDialog } from './template-parameters-dialog';
 
 type Props = {
@@ -45,7 +46,7 @@ export function TemplateSelectorDialog({ open, onOpenChange, phoneNumber, onTemp
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/templates');
+      const response = await fetch(`${CRM_WHATSAPP_API_BASE}/templates`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -84,7 +85,7 @@ export function TemplateSelectorDialog({ open, onOpenChange, phoneNumber, onTemp
     setSending(template.id);
     setError(null);
     try {
-      const response = await fetch('/api/templates/send', {
+      const response = await fetch(`${CRM_WHATSAPP_API_BASE}/templates/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

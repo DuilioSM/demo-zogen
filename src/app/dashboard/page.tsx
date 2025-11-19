@@ -1,0 +1,18 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function DashboardRedirect() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.push('/dashboard/ventas/crm-zogen/solicitudes');
+  }, [router]);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <p className="text-gray-600">Redirigiendo...</p>
+    </div>
+  );
+}

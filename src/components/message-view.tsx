@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import type { MediaData } from '@kapso/whatsapp-cloud-api';
 import type { Contact, ClientStatus } from '@/types/whatsapp';
+import { CRM_WHATSAPP_API_BASE } from '@/lib/constants';
 
 const STATUS_OPTIONS: ClientStatus[] = [
   "Cotizando",
@@ -133,12 +134,13 @@ type Props = {
   conversationId?: string;
   phoneNumber?: string;
   contactName?: string;
+  channelId?: string;
   onTemplateSent?: (phoneNumber: string) => Promise<void>;
   onBack?: () => void;
   isVisible?: boolean;
 };
 
-export function MessageView({ conversationId, phoneNumber, contactName, onTemplateSent, onBack, isVisible = false }: Props) {
+export function MessageView({ conversationId, phoneNumber, contactName, channelId, onTemplateSent, onBack, isVisible = false }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -166,7 +168,8 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
     if (!phoneNumber || !conversationId) return;
 
     try {
-      const response = await fetch(`/api/contacts?phoneNumberId=${conversationId.split('_')[0]}`);
+      const selectedChannelId = channelId ?? conversationId.split('_')[0];
+      const response = await fetch(`${CRM_WHATSAPP_API_BASE}/contacts?channelId=${selectedChannelId}`);
       if (response.ok) {
         const contacts: Contact[] = await response.json();
         const contact = contacts.find(c => c.phoneNumber === phoneNumber);
@@ -175,14 +178,14 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
     } catch (error) {
       console.error('Error fetching contact info:', error);
     }
-  }, [phoneNumber, conversationId]);
+  }, [phoneNumber, conversationId, channelId]);
 
   const updateContactStatus = async (status: ClientStatus) => {
     if (!phoneNumber || !conversationId) return;
 
     setUpdatingStatus(true);
     try {
-      const response = await fetch('/api/contacts', {
+      const response = await fetch(`${CRM_WHATSAPP_API_BASE}/contacts`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -206,7 +209,7 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
     if (!conversationId) return;
 
     try {
-      const response = await fetch(`/api/messages/${conversationId}`);
+      const response = await fetch(`${CRM_WHATSAPP_API_BASE}/messages/${conversationId}`);
       const data = await response.json();
 
       // Separate reactions from regular messages
@@ -335,7 +338,7 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
         formData.append('file', selectedFile);
       }
 
-      await fetch('/api/messages/send', {
+      await fetch(`${CRM_WHATSAPP_API_BASE}/messages/send`, {
         method: 'POST',
         body: formData
       });
@@ -803,7 +806,7 @@ export function MessageView({ conversationId, phoneNumber, contactName, onTempla
               </Card>
 
               {phoneNumber && (
-                <Link href={`/solicitudes/editar/${phoneNumber.replace(/\D/g, '')}`}>
+                <Link href={`/ventas/crm-zogen/solicitudes/editar/${phoneNumber.replace(/\D/g, '')}`}>
                   <Button className="w-full bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
                     <Edit className="mr-2 h-4 w-4" />
                     Editar Solicitud

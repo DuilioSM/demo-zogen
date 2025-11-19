@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Solicitud } from "@/types/solicitudes";
+import { CRM_ZOGEN_API_BASE } from "@/lib/constants";
 
 type Status = "idle" | "loading" | "ready" | "error";
 
@@ -14,13 +15,30 @@ export function useSolicitudes(options: { autoFetch?: boolean } = {}) {
     setErrorMessage(null);
 
     try {
-      const response = await fetch("/api/solicitudes");
+      const response = await fetch(`${CRM_ZOGEN_API_BASE}/solicitudes`);
       if (!response.ok) {
         throw new Error("No se pudo obtener la información");
       }
 
       const data = await response.json();
-      setSolicitudes(data.solicitudes ?? []);
+      const apiSolicitudes = data.solicitudes ?? [];
+
+      // Obtener solicitudes locales
+      const localSolicitudes: Solicitud[] = [];
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('zogen-solicitudes');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            localSolicitudes.push(...parsed);
+          } catch (e) {
+            console.error('Error parsing local solicitudes:', e);
+          }
+        }
+      }
+
+      // Combinar ambas fuentes
+      setSolicitudes([...localSolicitudes, ...apiSolicitudes]);
       setStatus("ready");
     } catch (error) {
       console.error("Error cargando solicitudes:", error);
