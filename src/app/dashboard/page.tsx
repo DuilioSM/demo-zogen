@@ -7,7 +7,7 @@ export default function DashboardRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    router.push('/dashboard/ventas/crm-zogen/solicitudes');
+    router.push('/ventas/solicitudes/solicitudes');
   }, [router]);
 
   return (

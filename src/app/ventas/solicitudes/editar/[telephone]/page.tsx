@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
-import { CheckCircle2, Loader2, Eye, Undo2, Upload, FileText, Download, FileCheck, FileArchive, DollarSign, Clock } from "lucide-react";
+import { CheckCircle2, Loader2, Eye, Undo2, Upload, FileText, Download, FileCheck, FileArchive, Clock, ArrowLeft } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,13 @@ import type { PaymentMethod } from "@/types/payment-method";
 import { useMedicalPrescriptions } from "@/hooks/useMedicalPrescriptions";
 import type { MedicalPrescription } from "@/types/medical-prescription";
 import { getServicioByName, SERVICIOS_CATALOG } from "@/types/servicio";
+import { ASEGURADORAS_CATALOG } from "@/types/aseguradora";
+import type { SolicitudServiceData } from "@/types/solicitudes";
 
 const STEPS = [
   { id: "order", label: "Solicitud del pedido" },
   { id: "patient", label: "Datos del paciente" },
+  { id: "service", label: "Datos del Servicio" },
   { id: "files", label: "Carga de Archivos" },
   { id: "validation", label: "Validación de Archivos" },
   { id: "insurance", label: "Gestión de Aseguradora" },
@@ -78,13 +81,15 @@ export default function EditSolicitudPage() {
     fetchPrescriptions,
   } = useMedicalPrescriptions();
   const [activeStep, setActiveStep] = useState<StepId>(STEPS[0].id);
+  const [serviceData, setServiceData] = useState<SolicitudServiceData | null>(null);
 
   const solicitud = useMemo(() => {
     return solicitudes.find((item) => {
+      if (item.id === telephoneParam) return true;
       const contact = sanitizePhone(item.contactPhone);
       return contact === normalizedParam;
     });
-  }, [solicitudes, normalizedParam]);
+  }, [solicitudes, telephoneParam, normalizedParam]);
 
   const patient = useMemo(() => {
     return patients.find((item) => sanitizePhone(item.phone) === normalizedParam);
@@ -97,6 +102,56 @@ export default function EditSolicitudPage() {
   const prescription = useMemo(() => {
     return prescriptions.find((item) => sanitizePhone(item.phone) === normalizedParam);
   }, [prescriptions, normalizedParam]);
+
+  useEffect(() => {
+    if (!solicitud) {
+      setServiceData(null);
+      return;
+    }
+
+    if (typeof window === "undefined") return;
+
+    const storageKey = `service-data-${solicitud.id}`;
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored) {
+        setServiceData(JSON.parse(stored));
+        return;
+      }
+    } catch (error) {
+      console.error("Error loading service data", error);
+    }
+
+    const matchedById = solicitud.servicioId
+      ? SERVICIOS_CATALOG.find((item) => item.id === solicitud.servicioId)
+      : null;
+    const matchedByName = !matchedById ? getServicioByName(solicitud.servicioNombre || solicitud.testType) : null;
+    const servicio = matchedById || matchedByName || SERVICIOS_CATALOG[0];
+    const aseguradoraFromSolicitud = solicitud.aseguradoraId
+      ? ASEGURADORAS_CATALOG.find((item) => item.id === solicitud.aseguradoraId)
+      : null;
+
+    const initial: SolicitudServiceData = {
+      servicioId: servicio?.id || "",
+      servicioNombre: servicio?.nombre || solicitud.testType,
+      laboratorio: servicio?.laboratorio,
+      precioUnitario: servicio?.precio,
+      tiempoEntrega: servicio?.tiempoEntrega,
+      cantidad: solicitud.servicioCantidad ?? 1,
+      metodoPago: solicitud.metodoPago ?? (aseguradoraFromSolicitud ? "aseguradora" : "bolsillo"),
+      aseguradoraId: solicitud.aseguradoraId ?? aseguradoraFromSolicitud?.id,
+      aseguradoraNombre: solicitud.aseguradoraNombre ?? aseguradoraFromSolicitud?.nombre,
+      aseguradoraRfc: solicitud.aseguradoraRFC ?? aseguradoraFromSolicitud?.rfc,
+      notas: "",
+    };
+
+    setServiceData(initial);
+  }, [solicitud]);
+
+  useEffect(() => {
+    if (!solicitud || !serviceData || typeof window === "undefined") return;
+    window.localStorage.setItem(`service-data-${solicitud.id}`, JSON.stringify(serviceData));
+  }, [serviceData, solicitud]);
 
   if (status === "loading") {
     return (
@@ -123,12 +178,12 @@ export default function EditSolicitudPage() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#F5F0E8] text-center">
         <p className="text-lg font-semibold text-[#2C2C2C]">No encontramos esta solicitud.</p>
         <div className="flex gap-3">
-          <Link href="/ventas/crm-zogen/solicitudes">
+          <Link href="/ventas/solicitudes">
             <Button className="bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
               <Undo2 className="mr-2 h-4 w-4" /> Regresar
             </Button>
           </Link>
-          <Link href={`/ventas/crm-zogen/solicitudes/${telephoneParam}`}>
+          <Link href={`/ventas/solicitudes/${telephoneParam}`}>
             <Button variant="outline" className="border-[#7B5C45] text-[#7B5C45]">
               Ver detalle
             </Button>
@@ -138,7 +193,8 @@ export default function EditSolicitudPage() {
     );
   }
 
-  const viewHref = `/ventas/crm-zogen/solicitudes/${normalizedParam}`;
+  const detailSlug = solicitud?.id || normalizedParam;
+  const viewHref = `/ventas/solicitudes/${detailSlug}`;
 
   return (
     <div className="min-h-screen bg-[#F5F0E8] text-[#2C2C2C]">
@@ -149,13 +205,15 @@ export default function EditSolicitudPage() {
               <h1 className="text-4xl font-semibold text-[#3C4858]">Actualizar prueba</h1>
             </div>
             <div className="flex gap-3">
-              <Link href="/ventas/crm-zogen/solicitudes">
-                <Button className="bg-[#7B5C45] px-4 py-2 text-sm font-medium text-white hover:bg-[#6A4D38]">
-                  Listar
+              <Link href="/ventas/solicitudes">
+                <Button className="flex items-center gap-2 bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700">
+                  <ArrowLeft className="h-4 w-4" />
+                  Volver a Solicitudes
                 </Button>
               </Link>
               <Link href={viewHref}>
                 <Button className="flex items-center gap-2 bg-[#7B5C45] px-4 py-2 text-sm font-medium text-white hover:bg-[#6A4D38]">
+                  <Eye className="h-4 w-4" />
                   Ver
                   <Eye className="h-4 w-4" />
                 </Button>
@@ -205,6 +263,8 @@ export default function EditSolicitudPage() {
               prescriptionStatus: prescriptionsStatus,
               prescriptionError: prescriptionsError,
               retryPrescription: fetchPrescriptions,
+              serviceData,
+              onServiceChange: (data) => setServiceData(data),
             })}
           </section>
         </div>
@@ -212,6 +272,8 @@ export default function EditSolicitudPage() {
     </div>
   );
 }
+
+type InsuranceStatus = 'pendiente' | 'enviado' | 'aprobado' | 'rechazado';
 
 type RenderStepProps = {
   solicitud: Solicitud;
@@ -228,6 +290,8 @@ type RenderStepProps = {
   prescriptionStatus: string;
   prescriptionError: string | null;
   retryPrescription: () => void;
+  serviceData: SolicitudServiceData | null;
+  onServiceChange: (data: SolicitudServiceData) => void;
 };
 
 function renderActiveStep({
@@ -245,6 +309,8 @@ function renderActiveStep({
   prescriptionStatus,
   prescriptionError,
   retryPrescription,
+  serviceData,
+  onServiceChange,
 }: RenderStepProps) {
   switch (activeStep) {
     case "order":
@@ -303,20 +369,35 @@ function renderActiveStep({
       return (
         <PatientDataSection
           solicitudId={solicitud.id}
+          solicitud={solicitud}
           patient={patient}
           patientStatus={patientStatus}
           patientError={patientError}
           retryPatient={retryPatient}
         />
       );
+    case "service":
+      return (
+        <ServiceDataSection
+          solicitudId={solicitud.id}
+          serviceData={serviceData}
+          onServiceChange={onServiceChange}
+        />
+      );
     case "insurance":
-      return <InsuranceManagementSection solicitudId={solicitud.id} paymentMethod={paymentMethod} solicitud={solicitud} />;
+      return (
+        <InsuranceManagementSection
+          solicitudId={solicitud.id}
+          solicitud={solicitud}
+          serviceData={serviceData}
+        />
+      );
     case "files":
       return <FilesUploadSection solicitudId={solicitud.id} patient={patient} paymentMethod={paymentMethod} prescription={prescription} />;
     case "validation":
       return <FilesValidationSection solicitudId={solicitud.id} />;
     case "vt":
-      return <VTRequestSection solicitudId={solicitud.id} solicitud={solicitud} />;
+      return <VTRequestSection solicitudId={solicitud.id} solicitud={solicitud} serviceData={serviceData} />;
     default:
       return null;
   }
@@ -385,13 +466,14 @@ function StepIndicator({ label, icon: Icon = CheckCircle2, active = false, onCli
 
 type PatientDataSectionProps = {
   solicitudId: string;
+  solicitud: Solicitud;
   patient?: Patient;
   patientStatus: string;
   patientError: string | null;
   retryPatient: () => void;
 };
 
-function PatientDataSection({ solicitudId, patient, patientStatus, patientError, retryPatient }: PatientDataSectionProps) {
+function PatientDataSection({ solicitudId, solicitud, patient, patientStatus, patientError, retryPatient }: PatientDataSectionProps) {
   const [editMode, setEditMode] = useState(false);
   const [patientData, setPatientData] = useState({
     firstName: patient?.firstName || "",
@@ -409,6 +491,8 @@ function PatientDataSection({ solicitudId, patient, patientStatus, patientError,
     ineUrl: patient?.ineUrl || "",
   });
 
+  const storedPatientSnapshot = solicitud.patientData ? JSON.stringify(solicitud.patientData) : null;
+
   // Cargar datos guardados localmente si existen
   useEffect(() => {
     const stored = localStorage.getItem(`patient-data-${solicitudId}`);
@@ -419,8 +503,9 @@ function PatientDataSection({ solicitudId, patient, patientStatus, patientError,
       } catch (e) {
         console.error('Error loading patient data:', e);
       }
+    } else if (solicitud.patientData) {
+      setPatientData(solicitud.patientData);
     } else if (patient) {
-      // Si no hay datos guardados pero hay datos del API, usarlos
       setPatientData({
         firstName: patient.firstName || "",
         lastName: patient.lastName || "",
@@ -437,10 +522,22 @@ function PatientDataSection({ solicitudId, patient, patientStatus, patientError,
         ineUrl: patient.ineUrl || "",
       });
     }
-  }, [solicitudId, patient]);
+  }, [solicitudId, patient, storedPatientSnapshot]);
 
   const handleSavePatientData = () => {
     localStorage.setItem(`patient-data-${solicitudId}`, JSON.stringify(patientData));
+    try {
+      const storedSolicitudes = localStorage.getItem('zogen-solicitudes');
+      if (storedSolicitudes) {
+        const parsed = JSON.parse(storedSolicitudes);
+        const updated = parsed.map((item: Solicitud) =>
+          item.id === solicitudId ? { ...item, patientData: patientData } : item
+        );
+        localStorage.setItem('zogen-solicitudes', JSON.stringify(updated));
+      }
+    } catch (error) {
+      console.error('Error syncing patient data into solicitudes store:', error);
+    }
     setEditMode(false);
     alert('Datos del paciente guardados correctamente');
   };
@@ -655,6 +752,155 @@ function PatientDataSection({ solicitudId, patient, patientStatus, patientError,
           )}
         </>
       )}
+    </div>
+  );
+}
+
+type ServiceDataSectionProps = {
+  solicitudId: string;
+  serviceData: SolicitudServiceData | null;
+  onServiceChange: (data: SolicitudServiceData) => void;
+};
+
+function ServiceDataSection({ solicitudId, serviceData, onServiceChange }: ServiceDataSectionProps) {
+  const [savingService, setSavingService] = useState(false);
+  if (!serviceData) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-10 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#7B5C45]" />
+        <p className="text-sm text-[#666]">Preparando datos del servicio…</p>
+      </div>
+    );
+  }
+  const updateData = (updates: Partial<SolicitudServiceData>) => {
+    onServiceChange({ ...serviceData, ...updates });
+  };
+
+  const handleServicioChange = (value: string) => {
+    const info = SERVICIOS_CATALOG.find((item) => item.id === value);
+    updateData({
+      servicioId: value,
+      servicioNombre: info?.nombre || serviceData.servicioNombre,
+      laboratorio: info?.laboratorio,
+      precioUnitario: info?.precio,
+      tiempoEntrega: info?.tiempoEntrega,
+    });
+  };
+
+  const handleMetodoPagoChange = (value: string) => {
+    const metodo = value === "aseguradora" ? "aseguradora" : "bolsillo";
+    updateData({
+      metodoPago: metodo,
+      ...(metodo === "bolsillo"
+        ? { aseguradoraId: undefined, aseguradoraNombre: undefined, aseguradoraRfc: undefined }
+        : {}),
+    });
+  };
+
+  const handleAseguradoraChange = (value: string) => {
+    const info = ASEGURADORAS_CATALOG.find((item) => item.id === value);
+    updateData({
+      aseguradoraId: value,
+      aseguradoraNombre: info?.nombre,
+      aseguradoraRfc: info?.rfc,
+    });
+  };
+
+  const handleCantidadChange = (value: string) => {
+    const parsed = Number(value);
+    const safeValue = Number.isNaN(parsed) || parsed <= 0 ? 1 : Math.floor(parsed);
+    updateData({ cantidad: safeValue });
+  };
+
+  const handleSaveServiceData = () => {
+    if (typeof window === 'undefined') return;
+    setSavingService(true);
+    window.localStorage.setItem(`service-data-${solicitudId}`, JSON.stringify(serviceData));
+    setTimeout(() => {
+      setSavingService(false);
+      alert('Datos del servicio guardados');
+    }, 300);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        <Field label="Servicio a realizar *">
+          <Select value={serviceData.servicioId} onValueChange={handleServicioChange}>
+            <SelectTrigger className="border-[#D5D0C8]">
+              <SelectValue placeholder="Selecciona un servicio" />
+            </SelectTrigger>
+            <SelectContent>
+              {SERVICIOS_CATALOG.map((servicio) => (
+                <SelectItem key={servicio.id} value={servicio.id}>
+                  {servicio.nombre} · {servicio.laboratorio}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Cantidad de estudios *">
+          <Input
+            type="number"
+            min={1}
+            value={serviceData.cantidad}
+            onChange={(event) => handleCantidadChange(event.target.value)}
+            className="border-[#D5D0C8]"
+          />
+        </Field>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Field label="Método de pago *">
+          <Select value={serviceData.metodoPago} onValueChange={handleMetodoPagoChange}>
+            <SelectTrigger className="border-[#D5D0C8]">
+              <SelectValue placeholder="Selecciona un método" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bolsillo">Pago directo (Bolsillo)</SelectItem>
+              <SelectItem value="aseguradora">Cobro a Aseguradora</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Aseguradora">
+          <Select
+            value={serviceData.aseguradoraId ?? undefined}
+            onValueChange={handleAseguradoraChange}
+            disabled={serviceData.metodoPago !== "aseguradora"}
+          >
+            <SelectTrigger className="border-[#D5D0C8]">
+              <SelectValue placeholder="Selecciona aseguradora" />
+            </SelectTrigger>
+            <SelectContent>
+              {ASEGURADORAS_CATALOG.map((aseguradora) => (
+                <SelectItem key={aseguradora.id} value={aseguradora.id}>
+                  {aseguradora.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {serviceData.metodoPago === "aseguradora" && !serviceData.aseguradoraId && (
+            <p className="mt-1 text-xs text-red-600">Selecciona una aseguradora para continuar.</p>
+          )}
+        </Field>
+      </div>
+
+      <Field label="Notas adicionales">
+        <Textarea
+          value={serviceData.notas || ""}
+          onChange={(event) => updateData({ notas: event.target.value })}
+          placeholder="Ej. Agregar interpretación clínica urgente, confirmar cobertura antes de facturar…"
+          className="min-h-[140px] border-[#D5D0C8]"
+        />
+      </Field>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSaveServiceData} disabled={savingService} className="bg-[#7B5C45] hover:bg-[#5E4331]">
+          {savingService ? 'Guardando…' : 'Guardar datos del servicio'}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -985,93 +1231,180 @@ function FilesValidationSection({ solicitudId }: { solicitudId: string }) {
 
 type InsuranceManagementSectionProps = {
   solicitudId: string;
-  paymentMethod?: PaymentMethod;
   solicitud: Solicitud;
+  serviceData?: SolicitudServiceData | null;
 };
 
-function InsuranceManagementSection({ solicitudId, paymentMethod, solicitud }: InsuranceManagementSectionProps) {
-  const [cotizacionMonto, setCotizacionMonto] = useState('');
-  const [cotizacionDescripcion, setCotizacionDescripcion] = useState('');
-  const [generating, setGenerating] = useState(false);
-  const [cotizacionGenerated, setCotizacionGenerated] = useState(false);
-  const [insuranceStatus, setInsuranceStatus] = useState<'pendiente' | 'aprobado' | 'rechazado'>('pendiente');
-  const [cartaPaseUrl, setCartaPaseUrl] = useState('');
-  const [servicioSeleccionado, setServicioSeleccionado] = useState('');
+type StoredInsuranceData = {
+  status: InsuranceStatus;
+  cartaPaseUrl?: string;
+  lastSentAt?: string | null;
+};
 
-  // Auto-rellenar cotización basado en el servicio
+function InsuranceManagementSection({
+  solicitudId,
+  solicitud,
+  serviceData,
+}: InsuranceManagementSectionProps) {
+  const [generating, setGenerating] = useState(false);
+  const [insuranceStatus, setInsuranceStatus] = useState<InsuranceStatus>('pendiente');
+  const [cartaPaseUrl, setCartaPaseUrl] = useState('');
+  const [lastSubmission, setLastSubmission] = useState<string | null>(null);
+  const insuranceStorageKey = `insurance-data-${solicitudId}`;
+
+  const servicioNombre = serviceData?.servicioNombre || solicitud.testType;
+  const laboratorio = serviceData?.laboratorio || solicitud.servicioLaboratorio || 'Laboratorio por definir';
+  const montoCalculado = (serviceData?.precioUnitario ?? 0) * (serviceData?.cantidad ?? 1);
+
   useEffect(() => {
-    if (solicitud.testType) {
-      const servicio = getServicioByName(solicitud.testType);
-      if (servicio) {
-        setCotizacionMonto(servicio.precio.toString());
-        setCotizacionDescripcion(servicio.descripcion);
-        setServicioSeleccionado(servicio.id);
+    const stored = localStorage.getItem(insuranceStorageKey);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as StoredInsuranceData;
+        setInsuranceStatus(parsed.status ?? 'pendiente');
+        setCartaPaseUrl(parsed.cartaPaseUrl ?? '');
+        setLastSubmission(parsed.lastSentAt ?? null);
+      } catch (error) {
+        console.error('Error reading insurance data', error);
       }
     }
-  }, [solicitud.testType]);
+  }, [insuranceStorageKey]);
 
-  const handleGenerateCotizacion = () => {
-    setGenerating(true);
-    setTimeout(() => {
-      const mockPdfUrl = `https://storage.example.com/${solicitudId}/cotizacion.pdf`;
-      const mockZipUrl = `https://storage.example.com/${solicitudId}/expediente.zip`;
+  const persistInsuranceData = (updates: Partial<StoredInsuranceData>) => {
+    const payload: StoredInsuranceData = {
+      status: updates.status ?? insuranceStatus,
+      cartaPaseUrl: updates.cartaPaseUrl ?? cartaPaseUrl,
+      lastSentAt: updates.lastSentAt ?? lastSubmission,
+    };
+    localStorage.setItem(insuranceStorageKey, JSON.stringify(payload));
+    setInsuranceStatus(payload.status);
+    setCartaPaseUrl(payload.cartaPaseUrl ?? '');
+    setLastSubmission(payload.lastSentAt ?? null);
+  };
 
-      const servicio = SERVICIOS_CATALOG.find(s => s.id === servicioSeleccionado) ||
-                         getServicioByName(solicitud.testType);
-
-      localStorage.setItem(`cotizacion-${solicitudId}`, JSON.stringify({
-        monto: cotizacionMonto,
-        descripcion: cotizacionDescripcion,
-        pdfUrl: mockPdfUrl,
-        zipUrl: mockZipUrl,
-        fecha: new Date().toISOString(),
-        servicioId: servicio?.id,
-        servicioNombre: servicio?.nombre,
-        laboratorio: servicio?.laboratorio,
-      }));
-
-      setCotizacionGenerated(true);
-      setGenerating(false);
-      alert('Cotización y expediente generados correctamente');
-    }, 2000);
+  const syncCotizacionSnapshot = () => {
+    if (!serviceData) return;
+    const descripcion = serviceData.notas?.trim() || `Gestión de ${servicioNombre}`;
+    const payload = {
+      monto: montoCalculado,
+      descripcion,
+      fecha: new Date().toISOString(),
+      servicioId: serviceData.servicioId,
+      servicioNombre,
+      laboratorio,
+      cantidad: serviceData.cantidad,
+      metodoPago: serviceData.metodoPago,
+      aseguradoraId: serviceData.aseguradoraId,
+      aseguradoraNombre: serviceData.aseguradoraNombre,
+      aseguradoraRfc: serviceData.aseguradoraRfc,
+    };
+    localStorage.setItem(`cotizacion-${solicitudId}`, JSON.stringify(payload));
   };
 
   const handleCompressFiles = () => {
     setGenerating(true);
     setTimeout(() => {
-      const mockZipUrl = `https://storage.example.com/${solicitudId}/documentos.zip`;
       alert('Archivos comprimidos en ZIP correctamente');
       setGenerating(false);
     }, 1500);
   };
 
+  const handleSendToInsurance = () => {
+    if (!serviceData) {
+      alert('Completa los Datos del Servicio antes de enviar a la aseguradora.');
+      return;
+    }
+
+    if (serviceData.metodoPago === 'aseguradora' && !serviceData.aseguradoraId) {
+      alert('Selecciona una aseguradora en la sección "Datos del Servicio".');
+      return;
+    }
+
+    syncCotizacionSnapshot();
+    const timestamp = new Date().toISOString();
+    persistInsuranceData({ status: 'enviado', lastSentAt: timestamp });
+    alert('Expediente enviado a la aseguradora. Actualiza el estado cuando recibas una respuesta.');
+  };
+
+  const handleStatusChange = (value: InsuranceStatus) => {
+    persistInsuranceData({ status: value });
+  };
+
+  const handleCartaChange = (value: string) => {
+    persistInsuranceData({ cartaPaseUrl: value });
+  };
+
+  const statusMessage: Record<InsuranceStatus, string> = {
+    pendiente: 'La solicitud está lista, pero aún no se ha enviado a la aseguradora.',
+    enviado: 'Estamos esperando respuesta de la aseguradora.',
+    aprobado: 'La aseguradora aprobó el servicio. Puedes continuar con VT.',
+    rechazado: 'La aseguradora rechazó la solicitud. Revisa observaciones.',
+  };
+
   return (
     <div className="space-y-6">
-      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-        <p className="text-sm text-indigo-900">
-          <strong>Gestión de Aseguradora:</strong> Genera cotizaciones, comprime documentos y gestiona
-          la respuesta de la aseguradora.
-        </p>
-      </div>
-
-      {/* Información de aseguradora */}
-      {paymentMethod && (
-        <div className="bg-white border border-[#E4D4C8] rounded-xl p-4">
-          <h3 className="font-semibold text-[#2C2C2C] mb-3">Información de la Aseguradora</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-[#666] mb-1">Aseguradora</p>
-              <p className="text-sm font-medium text-[#2C2C2C]">{paymentMethod.insurerName}</p>
-            </div>
-            <div>
-              <p className="text-xs text-[#666] mb-1">Método de pago</p>
-              <p className="text-sm font-medium text-[#2C2C2C]">{paymentMethod.method}</p>
-            </div>
+      <div className="bg-white border border-[#E4D4C8] rounded-xl p-4 space-y-4">
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-[#2C2C2C]">Estatus con la aseguradora</p>
+            <p className="text-xs text-[#666]">Actualiza el estado conforme recibas novedades.</p>
+            {lastSubmission && (
+              <p className="text-xs text-[#999] mt-1">Último envío: {new Date(lastSubmission).toLocaleString('es-MX')}</p>
+            )}
+          </div>
+          <div className="w-full max-w-[220px]">
+            <Select value={insuranceStatus} onValueChange={(value) => handleStatusChange(value as InsuranceStatus)}>
+              <SelectTrigger className="border-[#D5D0C8]">
+                <SelectValue placeholder="Selecciona el estatus" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pendiente">Pendiente</SelectItem>
+                <SelectItem value="enviado">Enviado</SelectItem>
+                <SelectItem value="aprobado">Aprobado</SelectItem>
+                <SelectItem value="rechazado">Rechazado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-      )}
+        {insuranceStatus === 'aprobado' && (
+          <div>
+            <label className="text-sm font-medium text-[#2C2C2C] mb-2 block">Carta Pase (URL o Archivo)</label>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                value={cartaPaseUrl}
+                onChange={(e) => handleCartaChange(e.target.value)}
+                placeholder="URL de la carta pase o subir archivo..."
+                className="border-[#D5D0C8] flex-1"
+              />
+              <Button variant="outline" size="sm" className="border-[#7B5C45]">
+                <Upload className="h-4 w-4" />
+              </Button>
+            </div>
+            {cartaPaseUrl && (
+              <a href={cartaPaseUrl} target="_blank" rel="noreferrer" className="text-xs text-[#8A6BA7] hover:underline flex items-center gap-1 mt-2">
+                <Download className="h-3 w-3" />
+                Ver carta pase
+              </a>
+            )}
+          </div>
+        )}
+        <div
+          className={cn(
+            'p-4 rounded-lg border text-sm',
+            insuranceStatus === 'aprobado' && 'bg-green-50 border-green-200',
+            insuranceStatus === 'rechazado' && 'bg-red-50 border-red-200',
+            insuranceStatus === 'enviado' && 'bg-blue-50 border-blue-200',
+            insuranceStatus === 'pendiente' && 'bg-yellow-50 border-yellow-200'
+          )}
+        >
+          <p>
+            Estado actual: <span className="font-bold uppercase">{insuranceStatus}</span>
+          </p>
+          <p className="text-xs mt-1 text-[#555]">{statusMessage[insuranceStatus]}</p>
+        </div>
+      </div>
 
-      {/* Comprimir archivos */}
       <div className="bg-white border border-[#E4D4C8] rounded-xl p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1102,204 +1435,25 @@ function InsuranceManagementSection({ solicitudId, paymentMethod, solicitud }: I
         </div>
       </div>
 
-      {/* Generación de cotización */}
-      <div className="bg-white border border-[#E4D4C8] rounded-xl p-6">
-        <h3 className="font-semibold text-[#2C2C2C] mb-4 flex items-center gap-2">
-          <DollarSign className="h-5 w-5" />
-          Crear Cotización
-        </h3>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-[#2C2C2C] mb-2 block">
-              Servicio / Estudio *
-            </label>
-            <Select
-              value={servicioSeleccionado}
-              onValueChange={(value) => {
-                setServicioSeleccionado(value);
-                const servicio = SERVICIOS_CATALOG.find(s => s.id === value);
-                if (servicio) {
-                  setCotizacionMonto(servicio.precio.toString());
-                  setCotizacionDescripcion(servicio.descripcion);
-                }
-              }}
-            >
-              <SelectTrigger className="border-[#D5D0C8]">
-                <SelectValue placeholder="Selecciona un servicio" />
-              </SelectTrigger>
-              <SelectContent>
-                {SERVICIOS_CATALOG.map((servicio) => (
-                  <SelectItem key={servicio.id} value={servicio.id}>
-                    {servicio.nombre} - ${servicio.precio.toLocaleString('es-MX')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-[#2C2C2C] mb-2 block">
-              Monto del Estudio *
-            </label>
-            <Input
-              type="number"
-              value={cotizacionMonto}
-              onChange={(e) => setCotizacionMonto(e.target.value)}
-              placeholder="$50,000"
-              className="border-[#D5D0C8]"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-[#2C2C2C] mb-2 block">
-              Descripción del Estudio *
-            </label>
-            <Textarea
-              value={cotizacionDescripcion}
-              onChange={(e) => setCotizacionDescripcion(e.target.value)}
-              placeholder="Panel oncogenómico integral - Análisis completo..."
-              className="border-[#D5D0C8] min-h-[100px]"
-            />
-          </div>
-
-          <Button
-            onClick={handleGenerateCotizacion}
-            disabled={generating || !cotizacionMonto || !cotizacionDescripcion || cotizacionGenerated}
-            className="w-full bg-[#7B5C45] hover:bg-[#6A4D38]"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Generando cotización y expediente...
-              </>
-            ) : cotizacionGenerated ? (
-              <>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Cotización Generada
-              </>
-            ) : (
-              <>
-                <FileText className="h-4 w-4 mr-2" />
-                Generar Cotización y Expediente
-              </>
-            )}
+      <div className="bg-white border border-[#E4D4C8] rounded-xl p-4">
+        <p className="text-sm text-[#2C2C2C] mb-2">Enviar expediente a la aseguradora</p>
+        <p className="text-xs text-[#666]">Asegúrate de tener el expediente completo antes de enviarlo. Guardamos un snapshot interno con los datos del servicio.</p>
+        <div className="mt-3 flex justify-end">
+          <Button onClick={handleSendToInsurance} disabled={!serviceData} className="bg-[#7B5C45] hover:bg-[#5E4331]">
+            Enviar a la aseguradora
           </Button>
-
-          {cotizacionGenerated && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
-              <p className="text-sm font-medium text-green-900">Documentos generados:</p>
-              <div className="space-y-1">
-                <a href="#" className="block text-sm text-[#8A6BA7] hover:underline flex items-center gap-2">
-                  <Download className="h-4 w-4" />
-                  Descargar Cotización (PDF)
-                </a>
-                <a href="#" className="block text-sm text-[#8A6BA7] hover:underline flex items-center gap-2">
-                  <Download className="h-4 w-4" />
-                  Descargar Expediente Completo (ZIP)
-                </a>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Respuesta de aseguradora */}
-      <div className="bg-white border border-[#E4D4C8] rounded-xl p-6">
-        <h3 className="font-semibold text-[#2C2C2C] mb-4">Respuesta de la Aseguradora</h3>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-[#2C2C2C] mb-2 block">
-              Estado de la Solicitud
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              <Button
-                variant={insuranceStatus === 'pendiente' ? 'default' : 'outline'}
-                onClick={() => setInsuranceStatus('pendiente')}
-                className={insuranceStatus === 'pendiente' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}
-                size="sm"
-              >
-                <Clock className="h-4 w-4 mr-2" />
-                Pendiente
-              </Button>
-              <Button
-                variant={insuranceStatus === 'aprobado' ? 'default' : 'outline'}
-                onClick={() => setInsuranceStatus('aprobado')}
-                className={insuranceStatus === 'aprobado' ? 'bg-green-600 hover:bg-green-700' : ''}
-                size="sm"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Aprobado
-              </Button>
-              <Button
-                variant={insuranceStatus === 'rechazado' ? 'default' : 'outline'}
-                onClick={() => setInsuranceStatus('rechazado')}
-                className={insuranceStatus === 'rechazado' ? 'bg-red-600 hover:bg-red-700' : ''}
-                size="sm"
-              >
-                <Undo2 className="h-4 w-4 mr-2" />
-                Rechazado
-              </Button>
-            </div>
-          </div>
-
-          {insuranceStatus === 'aprobado' && (
-            <div>
-              <label className="text-sm font-medium text-[#2C2C2C] mb-2 block">
-                Carta Pase (URL o Archivo)
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={cartaPaseUrl}
-                  onChange={(e) => setCartaPaseUrl(e.target.value)}
-                  placeholder="URL de la carta pase o subir archivo..."
-                  className="border-[#D5D0C8] flex-1"
-                />
-                <Button variant="outline" size="sm" className="border-[#7B5C45]">
-                  <Upload className="h-4 w-4" />
-                </Button>
-              </div>
-              {cartaPaseUrl && (
-                <a href={cartaPaseUrl} target="_blank" rel="noreferrer" className="text-xs text-[#8A6BA7] hover:underline flex items-center gap-1 mt-2">
-                  <Download className="h-3 w-3" />
-                  Ver carta pase
-                </a>
-              )}
-            </div>
-          )}
-
-          <div className={cn(
-            "p-4 rounded-lg",
-            insuranceStatus === 'aprobado' && "bg-green-50 border border-green-200",
-            insuranceStatus === 'rechazado' && "bg-red-50 border border-red-200",
-            insuranceStatus === 'pendiente' && "bg-yellow-50 border border-yellow-200"
-          )}>
-            <p className="text-sm font-medium">
-              Estado: <span className="font-bold">{insuranceStatus.toUpperCase()}</span>
-            </p>
-            {insuranceStatus === 'aprobado' && (
-              <p className="text-xs text-green-700 mt-1">
-                La aseguradora ha aprobado el estudio. Puedes continuar con la solicitud VT.
-              </p>
-            )}
-          </div>
         </div>
       </div>
     </div>
   );
 }
 
-type VTRequestSectionProps = {
-  solicitudId: string;
-  solicitud: Solicitud;
-};
 
-function VTRequestSection({ solicitudId, solicitud }: VTRequestSectionProps) {
+function VTRequestSection({ solicitudId, solicitud, serviceData }: VTRequestSectionProps) {
   const [status, setStatus] = useState<'pendiente' | 'enviado' | 'aprobado'>('pendiente');
   const [comentarios, setComentarios] = useState('');
   const [sending, setSending] = useState(false);
+  const [insuranceProgress, setInsuranceProgress] = useState<StoredInsuranceData | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(`vt-request-${solicitudId}`);
@@ -1309,6 +1463,19 @@ function VTRequestSection({ solicitudId, solicitud }: VTRequestSectionProps) {
       setComentarios(data.comentarios || '');
     }
   }, [solicitudId]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(`insurance-data-${solicitudId}`);
+    if (stored) {
+      try {
+        setInsuranceProgress(JSON.parse(stored));
+      } catch (error) {
+        console.error('Error loading insurance status', error);
+      }
+    }
+  }, [solicitudId]);
+
+  const readyForVT = !insuranceProgress || insuranceProgress.status === 'aprobado';
 
   const handleSendRequest = () => {
     setSending(true);
@@ -1320,10 +1487,12 @@ function VTRequestSection({ solicitudId, solicitud }: VTRequestSectionProps) {
       const patientDataStr = localStorage.getItem(`patient-data-${solicitudId}`);
       const cotizacionDataStr = localStorage.getItem(`cotizacion-${solicitudId}`);
       const filesDataStr = localStorage.getItem(`files-${solicitudId}`);
+      const serviceDataStr = localStorage.getItem(`service-data-${solicitudId}`);
 
       const patientData = patientDataStr ? JSON.parse(patientDataStr) : {};
       const cotizacion = cotizacionDataStr ? JSON.parse(cotizacionDataStr) : {};
       const filesData = filesDataStr ? JSON.parse(filesDataStr) : {};
+      const serviceSnapshot: SolicitudServiceData | null = serviceData ?? (serviceDataStr ? JSON.parse(serviceDataStr) : null);
 
       // Construir nombre completo del paciente
       const nombreCompleto = patientData.firstName && patientData.lastName
@@ -1351,27 +1520,45 @@ function VTRequestSection({ solicitudId, solicitud }: VTRequestSectionProps) {
       }));
 
       // Crear solicitud de administración con todos los datos
+      const metodoPago = serviceSnapshot?.metodoPago ?? cotizacion.metodoPago ?? 'aseguradora';
+      const aseguradoraNombre = metodoPago === 'aseguradora'
+        ? serviceSnapshot?.aseguradoraNombre || cotizacion.aseguradoraNombre || 'Aseguradora por definir'
+        : 'Pago directo (Bolsillo)';
+      const fallbackMonto = (serviceSnapshot?.precioUnitario ?? 0) * (serviceSnapshot?.cantidad ?? 1);
+      const montoFinal = Number(cotizacion.monto ?? 0) || fallbackMonto;
+      const servicioNombreFinal = serviceSnapshot?.servicioNombre || cotizacion.servicioNombre || solicitud.testType;
+      const servicioIdFinal = serviceSnapshot?.servicioId || cotizacion.servicioId;
+      const servicioCantidadFinal = serviceSnapshot?.cantidad || cotizacion.cantidad || 1;
+      const laboratorioFinal = serviceSnapshot?.laboratorio || cotizacion.laboratorio || 'Tempus Labs, Inc';
+      const aseguradoraIdFinal = serviceSnapshot?.aseguradoraId || cotizacion.aseguradoraId || solicitud.aseguradoraId;
+      const aseguradoraRfcFinal = serviceSnapshot?.aseguradoraRfc || cotizacion.aseguradoraRfc;
+
       const adminSolicitud = {
         id: vtId, // Usar el nuevo ID VT
         solicitudId: solicitudId, // Mantener referencia a la solicitud original
         solicitudOrigenId: solicitud.id, // ID de la solicitud de ventas
         paciente: nombreCompleto,
-        servicio: cotizacion.servicioNombre || solicitud.testType,
-        laboratorio: cotizacion.laboratorio || 'Tempus Labs, Inc',
-        monto: Number(cotizacion.monto) || 0,
-        aseguradora: patientData.aseguradora || 'N/A',
+        servicio: servicioNombreFinal,
+        servicioId: servicioIdFinal,
+        servicioCantidad: servicioCantidadFinal,
+        laboratorio: laboratorioFinal,
+        monto: montoFinal,
+        aseguradora: aseguradoraNombre,
+        aseguradoraId: aseguradoraIdFinal,
+        metodoPago,
+        rfcAseguradora: aseguradoraRfcFinal,
         fechaSolicitud: new Date().toISOString(),
 
         // Estados del workflow
+        statusAprobacion: 'pendiente' as const,
         statusCompra: 'pendiente' as const,
         statusLogistica: 'pendiente' as const,
-        statusEstudio: 'pendiente' as const,
+        statusResultados: 'pendiente' as const,
         statusFacturacion: 'pendiente' as const,
         statusCobranza: 'pendiente' as const,
 
         // Información adicional
-        servicioId: cotizacion.servicioId,
-
+        pagosLaboratorio: [],
         // Datos del paciente completos
         pacienteData: {
           nombreCompleto,
@@ -1402,6 +1589,8 @@ function VTRequestSection({ solicitudId, solicitud }: VTRequestSectionProps) {
 
         // Notas
         notas: comentarios,
+        // Snapshot para sincronizar datos del paciente
+        patientData,
       };
 
       // Guardar con el nuevo ID VT
@@ -1411,7 +1600,7 @@ function VTRequestSection({ solicitudId, solicitud }: VTRequestSectionProps) {
       console.log('📋 ID VT generado:', vtId);
       console.log('🔗 Solicitud origen:', solicitudId);
 
-      alert(`✅ Solicitud VT enviada a administración correctamente\n\n📋 ID VT: ${vtId}\n💰 Monto: $${Number(cotizacion.monto || 0).toLocaleString('es-MX')}\n👤 Paciente: ${nombreCompleto}`);
+      alert(`✅ Solicitud VT enviada a administración correctamente\n\n📋 ID VT: ${vtId}\n💰 Monto: $${montoFinal.toLocaleString('es-MX')}\n👤 Paciente: ${nombreCompleto}`);
     }, 1500);
   };
 
@@ -1423,6 +1612,22 @@ function VTRequestSection({ solicitudId, solicitud }: VTRequestSectionProps) {
           puedes enviar la solicitud a administración para que continúe con el proceso.
         </p>
       </div>
+
+      {insuranceProgress && (
+        <div className="border border-[#E4D4C8] rounded-xl bg-white p-4 text-sm text-[#2C2C2C]">
+          <p>
+            Estado con aseguradora: <strong className="uppercase">{insuranceProgress.status}</strong>
+          </p>
+          {insuranceProgress.lastSentAt && (
+            <p className="text-xs text-[#666]">Último envío: {new Date(insuranceProgress.lastSentAt).toLocaleString('es-MX')}</p>
+          )}
+          {!readyForVT && (
+            <p className="text-xs text-red-600 mt-1">
+              Necesitas marcar la respuesta de la aseguradora como aprobada antes de generar la solicitud VT.
+            </p>
+          )}
+        </div>
+      )}
 
       <Field label="Estado de la Solicitud VT">
         <div className={cn(
@@ -1447,7 +1652,7 @@ function VTRequestSection({ solicitudId, solicitud }: VTRequestSectionProps) {
             {status === 'pendiente' && (
               <Button
                 onClick={handleSendRequest}
-                disabled={sending}
+                disabled={sending || !readyForVT}
                 className="bg-[#9B7CB8] hover:bg-[#8A6BA7]"
               >
                 {sending ? (

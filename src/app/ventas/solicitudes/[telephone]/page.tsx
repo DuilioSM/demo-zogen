@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
+  ArrowLeft,
   CalendarClock,
   List,
   Loader2,
@@ -25,6 +26,7 @@ import { useSolicitudes } from "@/hooks/useSolicitudes";
 import { usePatients } from "@/hooks/usePatients";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useMedicalPrescriptions } from "@/hooks/useMedicalPrescriptions";
+import type { SolicitudServiceData } from "@/types/solicitudes";
 
 const formatDate = (value: string | null) => {
   if (!value) {
@@ -68,17 +70,40 @@ export default function SolicitudDetailPage() {
   const { patients } = usePatients();
   const { methods } = usePaymentMethods();
   const { prescriptions } = useMedicalPrescriptions();
+  const [serviceData, setServiceData] = useState<SolicitudServiceData | null>(null);
 
   const solicitud = useMemo(() => {
     return solicitudes.find((item) => {
+      if (item.id === telephoneParam) return true;
       const contact = sanitizePhone(item.contactPhone);
       return contact === normalizedParam;
     });
-  }, [solicitudes, normalizedParam]);
+  }, [solicitudes, telephoneParam, normalizedParam]);
 
   const patient = useMemo(() => {
     return patients.find((item) => sanitizePhone(item.phone) === normalizedParam);
   }, [patients, normalizedParam]);
+
+  const fallbackPatient = useMemo(() => {
+    if (!solicitud?.patientData) return null;
+    const data = solicitud.patientData;
+    return {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone,
+      gender: data.gender,
+      curp: data.curp,
+      birthDate: data.birthDate,
+      country: data.country,
+      state: data.state,
+      municipality: data.municipality,
+      neighborhood: data.neighborhood,
+      postalCode: data.postalCode,
+      address: data.address,
+    };
+  }, [solicitud?.patientData]);
+
+  const patientToShow = patient || fallbackPatient;
 
   const paymentMethod = useMemo(() => {
     return methods.find((item) => sanitizePhone(item.phone) === normalizedParam);
@@ -87,6 +112,25 @@ export default function SolicitudDetailPage() {
   const prescription = useMemo(() => {
     return prescriptions.find((item) => sanitizePhone(item.phone) === normalizedParam);
   }, [prescriptions, normalizedParam]);
+
+  useEffect(() => {
+    if (!solicitud) {
+      setServiceData(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem(`service-data-${solicitud.id}`);
+      if (stored) {
+        setServiceData(JSON.parse(stored));
+      } else {
+        setServiceData(null);
+      }
+    } catch (error) {
+      console.error("Error reading service data", error);
+      setServiceData(null);
+    }
+  }, [solicitud]);
 
   if (status === "loading") {
     return (
@@ -114,7 +158,7 @@ export default function SolicitudDetailPage() {
         <p className="text-lg font-semibold text-[#3A2D28]">
           No encontramos una solicitud con este teléfono.
         </p>
-        <Link href="/ventas/crm-zogen/solicitudes">
+        <Link href="/ventas/solicitudes">
           <Button className="bg-[#8A5A44] text-white">
             <Undo2 className="mr-2 h-4 w-4" /> Volver al listado
           </Button>
@@ -147,12 +191,11 @@ export default function SolicitudDetailPage() {
 
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-6">
-          <Link
-            href="/ventas/crm-zogen/solicitudes"
-            className="inline-flex items-center text-sm text-[#8A6BA7] hover:underline"
-          >
-            <Undo2 className="mr-2 h-4 w-4" />
-            Volver al listado
+          <Link href="/ventas/solicitudes">
+            <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver a Solicitudes
+            </Button>
           </Link>
         </div>
         <Card className="border-[#E4D4C8] shadow-sm">
@@ -184,25 +227,47 @@ export default function SolicitudDetailPage() {
               </div>
             </section>
 
-            {patient ? (
+            {patientToShow ? (
               <section>
                 <SectionHeader title="Datos del paciente" />
                 <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <InfoItem label="Nombre(s)" value={patient.firstName} />
-                  <InfoItem label="Apellidos" value={patient.lastName} />
-                  <InfoItem label="Teléfono" value={formatPhone(patient.phone)} icon={Phone} />
-                  <InfoItem label="Género" value={patient.gender} />
-                  <InfoItem label="CURP" value={patient.curp} />
-                  <InfoItem label="Fecha de nacimiento" value={patient.birthDate} />
-                  <InfoItem label="País" value={patient.country} />
-                  <InfoItem label="Estado" value={patient.state} />
-                  <InfoItem label="Municipio" value={patient.municipality} />
-                  <InfoItem label="Colonia" value={patient.neighborhood} />
-                  <InfoItem label="Código postal" value={patient.postalCode} />
-                  <InfoItem label="Domicilio" value={patient.address} />
+                  <InfoItem label="Nombre(s)" value={patientToShow.firstName || ''} />
+                  <InfoItem label="Apellidos" value={patientToShow.lastName || ''} />
+                  <InfoItem label="Teléfono" value={patientToShow.phone ? formatPhone(patientToShow.phone) : ''} icon={Phone} />
+                  <InfoItem label="Género" value={patientToShow.gender || ''} />
+                  <InfoItem label="CURP" value={patientToShow.curp || ''} />
+                  <InfoItem label="Fecha de nacimiento" value={patientToShow.birthDate || ''} />
+                  <InfoItem label="País" value={patientToShow.country || ''} />
+                  <InfoItem label="Estado" value={patientToShow.state || ''} />
+                  <InfoItem label="Municipio" value={patientToShow.municipality || ''} />
+                  <InfoItem label="Colonia" value={patientToShow.neighborhood || ''} />
+                  <InfoItem label="Código postal" value={patientToShow.postalCode || ''} />
+                  <InfoItem label="Domicilio" value={patientToShow.address || ''} />
                 </div>
               </section>
             ) : null}
+
+            <section>
+              <SectionHeader title="Datos del servicio" />
+              {serviceData ? (
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <InfoItem label="Servicio" value={serviceData.servicioNombre || solicitud.testType} />
+                  <InfoItem label="Laboratorio" value={serviceData.laboratorio || "Por definir"} />
+                  <InfoItem label="Método de pago" value={serviceData.metodoPago === 'bolsillo' ? 'Pago directo (Bolsillo)' : 'Cobro a aseguradora'} />
+                  <InfoItem
+                    label="Aseguradora"
+                    value={serviceData.metodoPago === 'aseguradora' ? serviceData.aseguradoraNombre || 'Por definir' : 'No aplica'}
+                  />
+                  <InfoItem label="Cantidad" value={`${serviceData.cantidad} estudio(s)`} />
+                  <InfoItem label="Total estimado" value="Dato reservado" />
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  No hay información del servicio guardada todavía. Actualiza la solicitud para definir método de pago y
+                  aseguradora.
+                </p>
+              )}
+            </section>
 
             {paymentMethod ? (
               <section>
@@ -258,7 +323,7 @@ export default function SolicitudDetailPage() {
                     Completa los pasos del proceso: datos del paciente, carga de archivos, cotizaciones, y más.
                   </p>
                 </div>
-                <Link href={`/ventas/crm-zogen/solicitudes/editar/${normalizedParam}`}>
+                <Link href={`/ventas/solicitudes/editar/${solicitud.id || normalizedParam}`}>
                   <Button size="lg" className="bg-[#9B7CB8] hover:bg-[#8A6BA7] text-white">
                     Ir a Gestión
                     <ArrowRight className="h-4 w-4 ml-2" />

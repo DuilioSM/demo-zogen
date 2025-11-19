@@ -9,8 +9,6 @@ import {
   Building2,
   BarChart3,
   ChevronDown,
-  Menu,
-  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -30,20 +28,16 @@ const navigation: NavItem[] = [
     label: 'Ventas',
     icon: <MessageSquare className="h-5 w-5" />,
     children: [
-      { label: 'CRM WhatsApp', href: '/dashboard/ventas/crm-whatsapp', description: 'Gestión de conversaciones por vendedor' },
-      { label: 'Solicitudes de Estudios', href: '/dashboard/ventas/crm-zogen/solicitudes', description: 'Solicitudes y cotizaciones de estudios' },
+      { label: 'CRM WhatsApp', href: '/ventas/crm-whatsapp', description: 'Gestión de conversaciones por vendedor' },
+      { label: 'Solicitudes de Estudios', href: '/ventas/solicitudes', description: 'Solicitudes y cotizaciones de estudios' },
     ],
   },
   {
     label: 'Administración',
     icon: <Building2 className="h-5 w-5" />,
     children: [
-      { label: 'Solicitudes de Venta', href: '/administracion/solicitudes-venta', description: 'Estudios aprobados para operación' },
-      { label: 'Compras', href: '/administracion/compras', description: 'Coordinación con laboratorios' },
-      { label: 'Logística', href: '/administracion/logistica', description: 'Recolección de tejidos y muestras' },
-      { label: 'Facturación', href: '/administracion/facturacion', description: 'Facturación a aseguradoras' },
-      { label: 'Cobranza', href: '/administracion/cobranza', description: 'Seguimiento de pagos' },
-      { label: 'Pagos', href: '/administracion/pagos', description: 'Pagos a laboratorios y comisiones' },
+      { label: 'Administración de Servicios', href: '/administracion', description: 'Gestión completa de servicios desde compra hasta cobranza' },
+      { label: 'Finanzas', href: '/administracion/finanzas', description: 'Facturación y cobranza' },
     ],
   },
   {
@@ -58,17 +52,16 @@ const navigation: NavItem[] = [
     label: 'Configuración',
     icon: <BarChart3 className="h-5 w-5" />,
     children: [
-      { label: 'Catálogo de Servicios', href: '/dashboard/configuracion/servicios', description: 'Gestión de servicios y estudios' },
-      { label: 'Catálogo de Laboratorios', href: '/dashboard/configuracion/laboratorios', description: 'Gestión de laboratorios' },
-      { label: 'Catálogo de Aseguradoras', href: '/dashboard/configuracion/aseguradoras', description: 'Gestión de aseguradoras' },
+      { label: 'Catálogo de Servicios', href: '/configuracion/servicios', description: 'Gestión de servicios y estudios' },
+      { label: 'Catálogo de Laboratorios', href: '/configuracion/laboratorios', description: 'Gestión de laboratorios' },
+      { label: 'Catálogo de Aseguradoras', href: '/configuracion/aseguradoras', description: 'Gestión de aseguradoras' },
     ],
   },
 ];
 
 export default function SharedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [expandedSections, setExpandedSections] = useState<string[]>(['Ventas', 'Administración']);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['Ventas', 'Administración', 'Reportes', 'Configuración']);
 
   const toggleSection = (label: string) => {
     setExpandedSections((prev) =>
@@ -77,6 +70,9 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   };
 
   const isActive = (href: string) => {
+    if (href === '/administracion') {
+      return pathname === href;
+    }
     return pathname?.startsWith(href);
   };
 
@@ -95,18 +91,12 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className={`flex h-screen ${bgClass}`}>
-      {/* Sidebar */}
-      <aside
-        className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out
-          lg:translate-x-0 lg:static lg:z-0
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
-      >
+      {/* Sidebar - Siempre visible */}
+      <aside className="w-72 bg-white border-r border-gray-200 flex-shrink-0">
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <Link href="/dashboard/ventas/crm-zogen/solicitudes" className="flex items-center gap-3">
+          <div className="flex items-center p-6 border-b border-gray-200">
+            <Link href="/ventas/crm-whatsapp" className="flex items-center gap-3">
               <Image
                 src="/images/zogen-logo.png"
                 alt="Zogen"
@@ -115,12 +105,6 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 className="h-8 w-auto"
               />
             </Link>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-500 hover:text-gray-700"
-            >
-              <X className="h-6 w-6" />
-            </button>
           </div>
 
           {/* Navigation */}
@@ -194,36 +178,11 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile Header */}
-        <header className="lg:hidden flex items-center justify-between p-4 border-b bg-white">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <Image
-            src="/images/zogen-logo.png"
-            alt="Zogen"
-            width={100}
-            height={32}
-            className="h-6 w-auto"
-          />
-        </header>
-
         {/* Page Content */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>
-
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
     </div>
   );
 }

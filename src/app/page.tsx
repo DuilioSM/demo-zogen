@@ -23,7 +23,7 @@ export default function LoginPage() {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(AUTH_KEY);
     if (stored === 'true') {
-      router.push('/dashboard/ventas/crm-zogen/solicitudes');
+      router.push('/ventas/crm-whatsapp');
     } else {
       setCheckingAuth(false);
     }
@@ -39,7 +39,7 @@ export default function LoginPage() {
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(AUTH_KEY, 'true');
         }
-        router.push('/dashboard/ventas/crm-zogen/solicitudes');
+        router.push('/ventas/crm-whatsapp');
       } else {
         setLoginError('Credenciales incorrectas, intenta nuevamente.');
         setAuthLoading(false);

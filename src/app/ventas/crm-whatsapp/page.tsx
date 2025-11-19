@@ -21,7 +21,7 @@ export default function CRMWhatsAppRedirect() {
             // Usar el primer vendedor disponible
             const firstChannel = channels[0];
             const targetId = firstChannel.realPhoneNumberId || firstChannel.id;
-            router.push(`/dashboard/ventas/crm-whatsapp/${targetId}/conversations`);
+            router.push(`/ventas/crm-whatsapp/${targetId}/conversations`);
             return;
           }
         }
@@ -30,7 +30,7 @@ export default function CRMWhatsAppRedirect() {
       }
 
       // Si no hay vendedores o hay error, usar un ID demo
-      router.push('/dashboard/ventas/crm-whatsapp/demo-vendor/conversations');
+      router.push('/ventas/crm-whatsapp/demo-vendor');
     };
 
     fetchAndRedirect();

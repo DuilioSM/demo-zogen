@@ -157,6 +157,38 @@ export default function SolicitudesListPage() {
     });
   };
 
+  const handleDeleteSelected = () => {
+    if (selectedIds.size === 0) return;
+
+    const confirmed = window.confirm(
+      `¿Estás seguro de eliminar ${selectedIds.size} solicitud(es)? Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmed) return;
+
+    // Eliminar solicitudes del localStorage
+    const stored = localStorage.getItem('zogen-solicitudes');
+    if (stored) {
+      const allSolicitudes = JSON.parse(stored);
+      const filtered = allSolicitudes.filter((s: Solicitud) => !selectedIds.has(s.id));
+      localStorage.setItem('zogen-solicitudes', JSON.stringify(filtered));
+    }
+
+    // Eliminar datos relacionados del localStorage
+    selectedIds.forEach((id) => {
+      localStorage.removeItem(`patient-data-${id}`);
+      localStorage.removeItem(`cotizacion-${id}`);
+      localStorage.removeItem(`files-${id}`);
+      localStorage.removeItem(`vt-request-${id}`);
+    });
+
+    // Limpiar selección y recargar
+    setSelectedIds(new Set());
+    fetchSolicitudes();
+
+    alert(`${selectedIds.size} solicitud(es) eliminada(s) correctamente`);
+  };
+
   const handleCreateSolicitud = () => {
     // Generar ID único para la solicitud
     const solicitudId = `SOL-${Date.now()}`;
@@ -272,6 +304,8 @@ export default function SolicitudesListPage() {
 
     return filteredSolicitudes.map((solicitud, index) => {
       const phoneParam = sanitizePhone(solicitud.contactPhone) || solicitud.id;
+      const editPath = `/ventas/solicitudes/editar/${solicitud.id}`;
+      const viewPath = `/ventas/solicitudes/${solicitud.id}`;
       const isSelected = selectedIds.has(solicitud.id);
 
       return (
@@ -288,14 +322,14 @@ export default function SolicitudesListPage() {
                 onChange={() => toggleSingleSelection(solicitud.id)}
               />
               <Link
-                href={`/dashboard/ventas/crm-zogen/solicitudes/${phoneParam}`}
+                href={viewPath}
                 className="hover:text-[#7B5C45]"
                 title="Ver"
               >
                 <Eye className="h-4 w-4" />
               </Link>
               <Link
-                href={`/dashboard/ventas/crm-zogen/solicitudes/editar/${phoneParam}`}
+                href={editPath}
                 className="hover:text-[#7B5C45]"
                 title="Editar"
               >
@@ -375,9 +409,11 @@ export default function SolicitudesListPage() {
               </Button>
               <Button
                 variant="outline"
-                className="flex items-center gap-2 border-[#7B5C45] bg-[#7B5C45] px-4 py-2 text-sm font-medium text-white shadow-none hover:bg-[#6A4D38]"
+                onClick={handleDeleteSelected}
+                disabled={selectedIds.size === 0}
+                className="flex items-center gap-2 border-[#8B4513] bg-[#8B4513] px-4 py-2 text-sm font-medium text-white shadow-none hover:bg-[#6F3609] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Exportar
+                Eliminar ({selectedIds.size})
                 <Trash className="h-4 w-4" />
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -492,77 +528,6 @@ export default function SolicitudesListPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="curp">CURP</Label>
-                          <Input
-                            id="curp"
-                            value={formData.curp}
-                            onChange={(e) => setFormData({ ...formData, curp: e.target.value.toUpperCase() })}
-                            placeholder="GOML850101MDFLPR03"
-                            className="border-[#D5D0C8]"
-                            maxLength={18}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-                          <Input
-                            id="birthDate"
-                            type="date"
-                            value={formData.birthDate}
-                            onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                            className="border-[#D5D0C8]"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Sección 3: Dirección */}
-                    <div className="space-y-4">
-                      <h3 className="font-semibold text-[#2C2C2C] border-b pb-2">Dirección (Opcional)</h3>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="state">Estado</Label>
-                          <Input
-                            id="state"
-                            value={formData.state}
-                            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                            placeholder="Ciudad de México"
-                            className="border-[#D5D0C8]"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="municipality">Municipio/Delegación</Label>
-                          <Input
-                            id="municipality"
-                            value={formData.municipality}
-                            onChange={(e) => setFormData({ ...formData, municipality: e.target.value })}
-                            placeholder="Benito Juárez"
-                            className="border-[#D5D0C8]"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="postalCode">Código Postal</Label>
-                          <Input
-                            id="postalCode"
-                            value={formData.postalCode}
-                            onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                            placeholder="03100"
-                            className="border-[#D5D0C8]"
-                            maxLength={5}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="address">Dirección Completa</Label>
-                        <Input
-                          id="address"
-                          value={formData.address}
-                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                          placeholder="Calle, número, colonia..."
-                          className="border-[#D5D0C8]"
-                        />
                       </div>
                     </div>
                   </div>

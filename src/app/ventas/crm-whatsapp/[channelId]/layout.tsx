@@ -24,13 +24,13 @@ export default function DashboardLayout({
   const isDashboard = !isConversationsActive && !isKanbanActive;
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="flex flex-col h-full">
       {/* Header con navbar */}
-      <header className="border-b bg-white shadow-sm">
-        <div className="flex flex-col gap-3 px-4 py-3">
+      <header className="border-b bg-white shadow-sm flex-shrink-0">
+        <div className="flex flex-col gap-3 px-6 py-4">
           {/* Pestañas de navegación */}
           <nav className="flex gap-2">
-            <Link href={`/dashboard/ventas/crm-whatsapp/${channelId}/conversations`}>
+            <Link href={`/ventas/crm-whatsapp/${channelId}/conversations`}>
               <Button
                 variant={isConversationsActive ? 'default' : 'ghost'}
                 size="sm"
@@ -40,7 +40,7 @@ export default function DashboardLayout({
                 Inbox
               </Button>
             </Link>
-            <Link href={`/dashboard/ventas/crm-whatsapp/${channelId}/kanban`}>
+            <Link href={`/ventas/crm-whatsapp/${channelId}/kanban`}>
               <Button
                 variant={isKanbanActive ? 'default' : 'ghost'}
                 size="sm"
@@ -50,7 +50,7 @@ export default function DashboardLayout({
                 Pipeline
               </Button>
             </Link>
-            <Link href={`/dashboard/ventas/crm-whatsapp/${channelId}`}>
+            <Link href={`/ventas/crm-whatsapp/${channelId}`}>
               <Button
                 variant={isDashboard ? 'default' : 'ghost'}
                 size="sm"
@@ -65,7 +65,7 @@ export default function DashboardLayout({
       </header>
 
       {/* Contenido */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-auto">
         {children}
       </main>
     </div>
