@@ -23,7 +23,7 @@ import {
   Trash2,
   Eye,
 } from 'lucide-react';
-import type { AdminSolicitud } from '@/types/admin-solicitud';
+import type { AdminSolicitud, PagoLaboratorio } from '@/types/admin-solicitud';
 
 type NuevoPagoForm = {
   proveedor: string;
@@ -203,16 +203,22 @@ export default function ServicioDetallePage({ params }: { params: Promise<{ serv
 
   const handleTogglePagoStatus = (pagoId: string) => {
     if (!solicitud) return;
+    const nextStatus = (status: PagoLaboratorio['status']): PagoLaboratorio['status'] => {
+      if (status === 'pendiente') return 'factura-recibida';
+      if (status === 'factura-recibida') return 'pagado';
+      return 'pendiente';
+    };
+
     const pagos = (solicitud.pagosLaboratorio || []).map((pago) =>
       pago.id === pagoId
-        ? { ...pago, status: pago.status === 'pagado' ? 'pendiente' : 'pagado' }
+        ? { ...pago, status: nextStatus(pago.status) }
         : pago
     );
     setSolicitud({ ...solicitud, pagosLaboratorio: pagos });
     persistSolicitud();
   };
 
-  const handleEditPago = (pago: AdminSolicitud['pagosLaboratorio'][number]) => {
+  const handleEditPago = (pago: PagoLaboratorio) => {
     setEditingPagoId(pago.id);
     setNuevoPago({
       proveedor: pago.proveedor,
@@ -247,7 +253,7 @@ export default function ServicioDetallePage({ params }: { params: Promise<{ serv
     handleSavePagoLaboratorio();
   };
 
-  const handleViewPagoFactura = (pago: AdminSolicitud['pagosLaboratorio'][number]) => {
+  const handleViewPagoFactura = (pago: PagoLaboratorio) => {
     if (!pago.archivoUrl) return;
     const win = window.open();
     if (win) {
@@ -376,7 +382,7 @@ export default function ServicioDetallePage({ params }: { params: Promise<{ serv
                     <Label>Status de Compra</Label>
                     <Select
                       value={solicitud.statusCompra}
-                      onValueChange={(value) => updateField('statusCompra', value)}
+                      onValueChange={(value) => updateField('statusCompra', value as AdminSolicitud['statusCompra'])}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -454,7 +460,7 @@ export default function ServicioDetallePage({ params }: { params: Promise<{ serv
                     <Label>Status de Logística</Label>
                     <Select
                       value={solicitud.statusLogistica}
-                      onValueChange={(value) => updateField('statusLogistica', value)}
+                      onValueChange={(value) => updateField('statusLogistica', value as AdminSolicitud['statusLogistica'])}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -512,7 +518,7 @@ export default function ServicioDetallePage({ params }: { params: Promise<{ serv
                     <Label>Status de Resultados</Label>
                     <Select
                       value={solicitud.statusResultados}
-                      onValueChange={(value) => updateField('statusResultados', value)}
+                      onValueChange={(value) => updateField('statusResultados', value as AdminSolicitud['statusResultados'])}
                     >
                       <SelectTrigger>
                         <SelectValue />

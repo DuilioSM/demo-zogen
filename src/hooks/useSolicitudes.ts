@@ -23,6 +23,16 @@ export function useSolicitudes(options: { autoFetch?: boolean } = {}) {
       const data = await response.json();
       const apiSolicitudes = data.solicitudes ?? [];
 
+      // Filtrar solicitudes vacías o sin datos válidos
+      const validApiSolicitudes = apiSolicitudes.filter((s: Solicitud) => {
+        // Filtrar solicitudes que no tengan médico, paciente, o tengan valores por defecto
+        return s.doctor &&
+               s.patient &&
+               s.doctor.toLowerCase() !== 'sin medico' &&
+               s.doctor.toLowerCase() !== 'sin médico' &&
+               s.patient.toLowerCase() !== 'sin paciente';
+      });
+
       // Obtener solicitudes locales
       const localSolicitudes: Solicitud[] = [];
       if (typeof window !== 'undefined') {
@@ -38,7 +48,7 @@ export function useSolicitudes(options: { autoFetch?: boolean } = {}) {
       }
 
       // Combinar ambas fuentes
-      setSolicitudes([...localSolicitudes, ...apiSolicitudes]);
+      setSolicitudes([...localSolicitudes, ...validApiSolicitudes]);
       setStatus("ready");
     } catch (error) {
       console.error("Error cargando solicitudes:", error);

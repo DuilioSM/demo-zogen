@@ -12,7 +12,7 @@ export type PagoLaboratorio = {
   fecha: string;
   monto: number;
   moneda: string;
-  status: 'pendiente' | 'pagado';
+  status: 'pendiente' | 'factura-recibida' | 'pagado';
   notas?: string;
   archivoUrl?: string;
   archivoNombre?: string;
@@ -56,6 +56,7 @@ export type AdminSolicitud = {
   fechaInicioResultados?: string;
   fechaFinResultados?: string;
   resultadosUrl?: string;
+  resultadosNombre?: string;
 
   // Facturación
   statusFacturacion: StatusFacturacion;
@@ -73,6 +74,16 @@ export type AdminSolicitud = {
   statusCobranza: StatusCobranza;
   fechaPago?: string;
   referenciaPago?: string;
+
+  // Pagos a proveedores
+  statusPagoProveedor?: 'pendiente' | 'factura-recibida' | 'pagado';
+  montoPagoProveedor?: number;
+  fechaPagoProveedor?: string;
+  facturaProveedorArchivo?: string;
+  facturaProveedorNombre?: string;
+  comprobantePagoProveedorArchivo?: string;
+  comprobantePagoProveedorNombre?: string;
+  notasPagoProveedor?: string;
 
   // General
   notas?: string;

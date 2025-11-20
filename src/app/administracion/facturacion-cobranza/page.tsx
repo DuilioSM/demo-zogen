@@ -23,9 +23,15 @@ import {
 import type { AdminSolicitud } from '@/types/admin-solicitud';
 import jsPDF from 'jspdf';
 
-type Status = 'Pendiente' | 'Facturado' | 'Cobrado' | 'Terminado';
+type Status = 'Pendiente' | 'Facturado' | 'PendienteCobro' | 'Terminado';
+const STATUS_LABELS: Record<Status, string> = {
+  Pendiente: 'Pendiente',
+  Facturado: 'Facturado',
+  PendienteCobro: 'Pendiente de Cobro',
+  Terminado: 'Terminado',
+};
 
-export default function FinanzasPage() {
+export default function FacturacionCobranzaPage() {
   const [solicitudes, setSolicitudes] = useState<AdminSolicitud[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Status>('Pendiente');
@@ -72,7 +78,7 @@ export default function FinanzasPage() {
   const filteredSolicitudes = useMemo(() => {
     const getStatus = (s: AdminSolicitud): Status => {
         if (s.statusCobranza === 'pagado') return 'Terminado';
-        if (s.statusFacturacion === 'timbrado') return 'Cobrado';
+        if (s.statusFacturacion === 'timbrado' && s.statusCobranza !== 'pagado') return 'PendienteCobro';
         if (s.statusFacturacion === 'facturado') return 'Facturado';
         return 'Pendiente';
     }
@@ -84,9 +90,9 @@ export default function FinanzasPage() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-purple-100/30 to-white p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Finanzas</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Facturación y Cobranza</h1>
           <p className="text-gray-600 mt-2">
-            Gestión de facturación y cobranza de servicios a aseguradoras.
+            Seguimiento de facturación, timbrado y pagos de servicios asegurados.
           </p>
         </div>
 
@@ -99,7 +105,7 @@ export default function FinanzasPage() {
             <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="Pendiente">Pendiente ({solicitudes.filter(s => s.statusFacturacion === 'pendiente').length})</TabsTrigger>
               <TabsTrigger value="Facturado">Facturado ({solicitudes.filter(s => s.statusFacturacion === 'facturado').length})</TabsTrigger>
-              <TabsTrigger value="Cobrado">Cobrado ({solicitudes.filter(s => s.statusFacturacion === 'timbrado' && s.statusCobranza !== 'pagado').length})</TabsTrigger>
+              <TabsTrigger value="PendienteCobro">Pendiente de Cobro ({solicitudes.filter(s => s.statusFacturacion === 'timbrado' && s.statusCobranza !== 'pagado').length})</TabsTrigger>
               <TabsTrigger value="Terminado">Terminado ({solicitudes.filter(s => s.statusCobranza === 'pagado').length})</TabsTrigger>
             </TabsList>
 
@@ -112,7 +118,7 @@ export default function FinanzasPage() {
                   ) : (
                     <Card>
                         <CardContent className="pt-6">
-                            <p className="text-center text-gray-500">No hay solicitudes en estado "{activeTab}"</p>
+                            <p className="text-center text-gray-500">No hay solicitudes en estado &quot;{STATUS_LABELS[activeTab]}&quot;</p>
                         </CardContent>
                     </Card>
                   )}
@@ -150,7 +156,7 @@ function SolicitudCard({ solicitud, onUpdate, activeTab }: { solicitud: AdminSol
                             <>
                                 {activeTab === 'Pendiente' && <FacturacionForm solicitud={solicitud} onUpdate={onUpdate} onCancel={() => setShowForm(false)} />}
                                 {activeTab === 'Facturado' && <TimbradoForm solicitud={solicitud} onUpdate={onUpdate} onCancel={() => setShowForm(false)} />}
-                                {activeTab === 'Cobrado' && <CobranzaForm solicitud={solicitud} onUpdate={onUpdate} onCancel={() => setShowForm(false)} />}
+                                {activeTab === 'PendienteCobro' && <CobranzaForm solicitud={solicitud} onUpdate={onUpdate} onCancel={() => setShowForm(false)} />}
                             </>
                         )}
                     </div>
@@ -159,7 +165,6 @@ function SolicitudCard({ solicitud, onUpdate, activeTab }: { solicitud: AdminSol
                     <div className="mt-4 pt-4 border-t text-sm text-gray-600">
                         <p>Factura: <span className="font-medium">{solicitud.numeroFactura}</span></p>
                         <p>Fecha de Pago: <span className="font-medium">{solicitud.fechaPago ? new Date(solicitud.fechaPago).toLocaleDateString('es-MX') : 'N/A'}</span></p>
-                        <p>Cuenta: <span className="font-medium">{solicitud.cuentaPago || 'N/A'}</span></p>
                     </div>
                 )}
             </CardContent>
@@ -170,11 +175,29 @@ function SolicitudCard({ solicitud, onUpdate, activeTab }: { solicitud: AdminSol
 
 function FacturacionForm({ solicitud, onUpdate, onCancel }: { solicitud: AdminSolicitud, onUpdate: (id: string, data: Partial<AdminSolicitud>) => void, onCancel: () => void }) {
   const [montoFactura, setMontoFactura] = useState(solicitud.monto.toString());
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdate(solicitud.id, { statusFacturacion: 'facturado', montoFactura: parseFloat(montoFactura) });
-    onCancel();
+    setIsGeneratingPdf(true);
+    setTimeout(() => {
+      const pdf = new jsPDF();
+      pdf.text('Factura Zogen', 20, 20);
+      pdf.text(`Paciente: ${solicitud.paciente}`, 20, 30);
+      pdf.text(`Servicio: ${solicitud.servicio}`, 20, 40);
+      pdf.text(`Monto: $${Number(montoFactura).toLocaleString('es-MX')}`, 20, 50);
+      const pdfUri = pdf.output('datauristring');
+      if (typeof window !== 'undefined') {
+        window.open(pdfUri, '_blank');
+      }
+      onUpdate(solicitud.id, {
+        statusFacturacion: 'facturado',
+        montoFactura: parseFloat(montoFactura),
+        pdfFacturaUrl: pdfUri,
+      });
+      setIsGeneratingPdf(false);
+      onCancel();
+    }, 1500);
   };
 
   return (
@@ -182,20 +205,29 @@ function FacturacionForm({ solicitud, onUpdate, onCancel }: { solicitud: AdminSo
       <h4 className="font-medium">Generar Factura</h4>
       <div>
         <Label htmlFor={`monto-${solicitud.id}`}>Monto de Factura</Label>
-        <Input id={`monto-${solicitud.id}`} type="number" value={montoFactura} onChange={(e) => setMontoFactura(e.target.value)} placeholder="Monto" />
+        <Input id={`monto-${solicitud.id}`} type="number" value={montoFactura} onChange={(e) => setMontoFactura(e.target.value)} placeholder="Monto" disabled={isGeneratingPdf} />
       </div>
+      {isGeneratingPdf && (
+        <div className="rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-800">
+          Generando PDF de la factura... abre automáticamente una vista previa.
+        </div>
+      )}
       <div className="flex gap-2">
-        <Button type="submit" size="sm">Marcar como Facturado</Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
+        <Button type="submit" size="sm" disabled={isGeneratingPdf}>
+          {isGeneratingPdf ? 'Generando...' : 'Marcar como Facturado'}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={isGeneratingPdf}>Cancelar</Button>
       </div>
     </form>
   );
 }
 
 function TimbradoForm({ solicitud, onUpdate, onCancel }: { solicitud: AdminSolicitud, onUpdate: (id: string, data: Partial<AdminSolicitud>) => void, onCancel: () => void }) {
-    const [numeroFactura, setNumeroFactura] = useState('');
+    const [numeroFactura, setNumeroFactura] = useState(solicitud.numeroFactura || '');
     const [fechaFactura, setFechaFactura] = useState(new Date().toISOString().split('T')[0]);
     const [isStamping, setIsStamping] = useState(false);
+    const [satStatus, setSatStatus] = useState<'idle' | 'validating' | 'validado'>('idle');
+    const [satMessage, setSatMessage] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -205,82 +237,72 @@ function TimbradoForm({ solicitud, onUpdate, onCancel }: { solicitud: AdminSolic
         }
 
         setIsStamping(true);
+        setSatStatus('validating');
+        setSatMessage('Validando la factura con el SAT...');
 
-        // Simular el proceso de timbrado
+        // Simular validación con el SAT
         setTimeout(() => {
-            // Generar PDF de demostración
-            const pdf = new jsPDF();
-            pdf.text('Factura Demo', 20, 20);
-            pdf.text(`Paciente: ${solicitud.paciente}`, 20, 30);
-            pdf.text(`Servicio: ${solicitud.servicio}`, 20, 40);
-            pdf.text(`Monto: $${solicitud.monto.toLocaleString('es-MX')}`, 20, 50);
-            const pdfDataUri = pdf.output('datauristring');
-
-            onUpdate(solicitud.id, { 
-                statusFacturacion: 'timbrado', 
-                numeroFactura, 
-                fechaFactura, 
-                facturaUrl: pdfDataUri 
+            const folioSat = `SAT-${Math.floor(Math.random() * 1_000_000)}`;
+            onUpdate(solicitud.id, {
+                statusFacturacion: 'timbrado',
+                numeroFactura,
+                fechaFactura,
+                uuidFactura: folioSat,
             });
-
-            setIsStamping(false);
-            onCancel();
+            setSatStatus('validado');
+            setSatMessage(`SAT validó el comprobante. Folio: ${folioSat}`);
+            setTimeout(() => {
+                setIsStamping(false);
+                setSatStatus('idle');
+                onCancel();
+            }, 1200);
         }, 2000);
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-gray-50 rounded-lg">
             <h4 className="font-medium">Registrar Timbrado de Factura</h4>
-            {isStamping ? (
-                <div className="text-center">
-                    <p>Timbrando factura...</p>
-                    {/* Aquí podrías agregar un spinner */}
+            <div>
+                <Label htmlFor={`numeroFactura-${solicitud.id}`}>Número de Factura / Folio</Label>
+                <Input id={`numeroFactura-${solicitud.id}`} value={numeroFactura} onChange={(e) => setNumeroFactura(e.target.value)} placeholder="Folio de la factura" disabled={isStamping} />
+            </div>
+            <div>
+                <Label htmlFor={`fechaFactura-${solicitud.id}`}>Fecha de Timbrado</Label>
+                <Input id={`fechaFactura-${solicitud.id}`} type="date" value={fechaFactura} onChange={(e) => setFechaFactura(e.target.value)} disabled={isStamping} />
+            </div>
+            {satStatus !== 'idle' && (
+                <div className={`rounded-md border p-3 text-sm ${satStatus === 'validando' ? 'border-yellow-200 bg-yellow-50 text-yellow-800' : 'border-green-200 bg-green-50 text-green-800'}`}>
+                    {satMessage}
                 </div>
-            ) : (
-                <>
-                    <div>
-                        <Label htmlFor={`numeroFactura-${solicitud.id}`}>Número de Factura / Folio</Label>
-                        <Input id={`numeroFactura-${solicitud.id}`} value={numeroFactura} onChange={(e) => setNumeroFactura(e.target.value)} placeholder="Folio de la factura" />
-                    </div>
-                    <div>
-                        <Label htmlFor={`fechaFactura-${solicitud.id}`}>Fecha de Timbrado</Label>
-                        <Input id={`fechaFactura-${solicitud.id}`} type="date" value={fechaFactura} onChange={(e) => setFechaFactura(e.target.value)} />
-                    </div>
-                    <div className="flex gap-2">
-                        <Button type="submit" size="sm" disabled={isStamping}>
-                            {isStamping ? 'Timbrando...' : 'Guardar Timbrado'}
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={isStamping}>Cancelar</Button>
-                    </div>
-                </>
             )}
+            <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={isStamping}>
+                    {isStamping ? 'Validando...' : 'Guardar Timbrado'}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={isStamping}>Cancelar</Button>
+            </div>
         </form>
     );
 }
 
 
 function CobranzaForm({ solicitud, onUpdate, onCancel }: { solicitud: AdminSolicitud, onUpdate: (id: string, data: Partial<AdminSolicitud>) => void, onCancel: () => void }) {
-  const [cuentaPago, setCuentaPago] = useState('');
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
   const [referenciaPago, setReferenciaPago] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cuentaPago || !fechaPago) {
-        alert('Por favor completa la cuenta y la fecha de pago.');
+    if (!fechaPago) {
+        alert('Por favor completa la fecha de pago.');
         return;
     }
-    onUpdate(solicitud.id, { statusCobranza: 'pagado', cuentaPago, fechaPago, referenciaPago });
+    onUpdate(solicitud.id, { statusCobranza: 'pagado', fechaPago, referenciaPago });
     onCancel();
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-gray-50 rounded-lg">
       <h4 className="font-medium">Registrar Pago</h4>
-      <div>
-        <Label htmlFor={`cuenta-${solicitud.id}`}>Cuenta de Pago</Label>
-        <Input id={`cuenta-${solicitud.id}`} value={cuentaPago} onChange={(e) => setCuentaPago(e.target.value)} placeholder="Ej. BBVA, Santander" />
-      </div>
        <div>
         <Label htmlFor={`referencia-${solicitud.id}`}>Referencia de Pago</Label>
         <Input id={`referencia-${solicitud.id}`} value={referenciaPago} onChange={(e) => setReferenciaPago(e.target.value)} placeholder="ID de transacción, etc." />

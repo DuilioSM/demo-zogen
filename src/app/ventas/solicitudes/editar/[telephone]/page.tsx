@@ -19,9 +19,14 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import type { PaymentMethod } from "@/types/payment-method";
 import { useMedicalPrescriptions } from "@/hooks/useMedicalPrescriptions";
 import type { MedicalPrescription } from "@/types/medical-prescription";
-import { getServicioByName, SERVICIOS_CATALOG } from "@/types/servicio";
+import { getServicioByName, SERVICIOS_CATALOG, type Servicio } from "@/types/servicio";
 import { ASEGURADORAS_CATALOG } from "@/types/aseguradora";
 import type { SolicitudServiceData } from "@/types/solicitudes";
+import { CUENTAS_CATALOG } from "@/types/cuenta";
+import { ESPECIALISTAS_CATALOG } from "@/types/especialista";
+import { LABORATORIOS_CATALOG } from "@/types/laboratorio";
+import type { Prospecto } from "@/types/prospecto";
+import { PROSPECTOS_CATALOG } from "@/types/prospecto";
 
 const STEPS = [
   { id: "order", label: "Solicitud del pedido" },
@@ -56,6 +61,7 @@ const formatDate = (value: string | null) => {
 };
 
 const sanitizePhone = (value?: string) => (value ? value.replace(/[^\d]/g, "") : "");
+const PROSPECTOS_STORAGE_KEY = "zogen-prospectos";
 
 export default function EditSolicitudPage() {
   const params = useParams();
@@ -312,6 +318,25 @@ function renderActiveStep({
   serviceData,
   onServiceChange,
 }: RenderStepProps) {
+  const getMedicoSolicitante = () => {
+    const cuenta = CUENTAS_CATALOG.find(c => c.nombre === solicitud.doctor);
+    return cuenta?.nombre || solicitud.doctor;
+  };
+
+  const getEspecialista = () => {
+    // Buscar por teléfono en el catálogo de especialistas
+    const especialista = ESPECIALISTAS_CATALOG.find(e => e.telefono === solicitud.vendorPhone);
+    return especialista?.nombreCompleto || 'No asignado';
+  };
+
+  const getLaboratorio = () => {
+    if (serviceData?.laboratorio) {
+      return serviceData.laboratorio;
+    }
+    const servicio = SERVICIOS_CATALOG.find(s => s.nombre === solicitud.testType);
+    return servicio?.laboratorio || 'No especificado';
+  };
+
   switch (activeStep) {
     case "order":
       return (
@@ -322,15 +347,8 @@ function renderActiveStep({
                 {solicitud.patient}
               </div>
             </Field>
-            <Field label="Especialista médico *">
-              <Select defaultValue={solicitud.doctor}>
-                <SelectTrigger className="rounded-md border-l-4 border-l-[#C37C4D] bg-[#E8E3DB] shadow-sm">
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={solicitud.doctor}>{solicitud.doctor}</SelectItem>
-                </SelectContent>
-              </Select>
+            <Field label="Médico Solicitante">
+              <ReadOnlyField value={getMedicoSolicitante()} />
             </Field>
           </div>
 
@@ -347,8 +365,8 @@ function renderActiveStep({
             <Field label="Teléfono de contacto">
               <ReadOnlyField value={formatPhone(solicitud.contactPhone)} />
             </Field>
-            <Field label="Teléfono del vendedor">
-              <ReadOnlyField value={formatPhone(solicitud.vendorPhone)} />
+            <Field label="Especialista">
+              <ReadOnlyField value={getEspecialista()} />
             </Field>
           </div>
 
@@ -356,8 +374,8 @@ function renderActiveStep({
             <ReadOnlyField value={formatDate(solicitud.createdAt)} />
           </Field>
 
-          <Field label="Laboratorio *">
-            <div className="text-base text-[#5C6B9A]">Tempus Labs, Inc</div>
+          <Field label="Laboratorio">
+            <ReadOnlyField value={getLaboratorio()} />
           </Field>
 
        
@@ -504,7 +522,11 @@ function PatientDataSection({ solicitudId, solicitud, patient, patientStatus, pa
         console.error('Error loading patient data:', e);
       }
     } else if (solicitud.patientData) {
-      setPatientData(solicitud.patientData);
+      const patientDataWithIne = solicitud.patientData as typeof solicitud.patientData & { ineUrl?: string };
+      setPatientData({
+        ...solicitud.patientData,
+        ineUrl: patientDataWithIne.ineUrl || ''
+      });
     } else if (patient) {
       setPatientData({
         firstName: patient.firstName || "",
@@ -524,6 +546,48 @@ function PatientDataSection({ solicitudId, solicitud, patient, patientStatus, pa
     }
   }, [solicitudId, patient, storedPatientSnapshot]);
 
+  const upsertProspectFromPatient = () => {
+    const fullName = `${patientData.firstName} ${patientData.lastName}`.trim() || solicitud.patient;
+    const telefono = patientData.phone || solicitud.contactPhone || 'Sin teléfono';
+    const especialista = ESPECIALISTAS_CATALOG.find((e) => e.telefono === solicitud.vendorPhone);
+    const stored = localStorage.getItem(PROSPECTOS_STORAGE_KEY);
+    let prospectList: Prospecto[] = stored ? (() => {
+      try {
+        return JSON.parse(stored);
+      } catch (error) {
+        console.error('Error parsing stored prospects', error);
+        return [...PROSPECTOS_CATALOG];
+      }
+    })() : [...PROSPECTOS_CATALOG];
+
+    const newProspect: Prospecto = {
+      id: `pac-${solicitudId}`,
+      nombre: fullName,
+      email: 'sin-correo@zogen.mx',
+      telefono,
+      especialistaId: especialista?.id || 'sin-asignar',
+      estado: 'nuevo',
+      fechaCreacion: new Date().toISOString(),
+    };
+
+    const existingIndex = prospectList.findIndex(
+      (prospect) => prospect.id === newProspect.id || prospect.telefono === newProspect.telefono
+    );
+
+    if (existingIndex >= 0) {
+      prospectList[existingIndex] = {
+        ...prospectList[existingIndex],
+        nombre: newProspect.nombre,
+        telefono: newProspect.telefono,
+        fechaUltimoContacto: new Date().toISOString(),
+      };
+    } else {
+      prospectList = [...prospectList, newProspect];
+    }
+
+    localStorage.setItem(PROSPECTOS_STORAGE_KEY, JSON.stringify(prospectList));
+  };
+
   const handleSavePatientData = () => {
     localStorage.setItem(`patient-data-${solicitudId}`, JSON.stringify(patientData));
     try {
@@ -538,6 +602,7 @@ function PatientDataSection({ solicitudId, solicitud, patient, patientStatus, pa
     } catch (error) {
       console.error('Error syncing patient data into solicitudes store:', error);
     }
+    upsertProspectFromPatient();
     setEditMode(false);
     alert('Datos del paciente guardados correctamente');
   };
@@ -849,6 +914,27 @@ function ServiceDataSection({ solicitudId, serviceData, onServiceChange }: Servi
             className="border-[#D5D0C8]"
           />
         </Field>
+
+        <Field label="Laboratorio asignado *">
+          <Select
+            value={serviceData.laboratorio ?? undefined}
+            onValueChange={(value) => updateData({ laboratorio: value })}
+          >
+            <SelectTrigger className="border-[#D5D0C8]">
+              <SelectValue placeholder="Selecciona laboratorio" />
+            </SelectTrigger>
+            <SelectContent>
+              {LABORATORIOS_CATALOG.map((lab) => (
+                <SelectItem key={lab.id} value={lab.nombre}>
+                  {lab.nombre}
+                </SelectItem>
+              ))}
+              {serviceData.laboratorio && !LABORATORIOS_CATALOG.some((lab) => lab.nombre === serviceData.laboratorio) && (
+                <SelectItem value={serviceData.laboratorio}>{serviceData.laboratorio}</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </Field>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -1027,20 +1113,18 @@ function FilesUploadSection({ solicitudId, patient, paymentMethod, prescription 
     reader.readAsDataURL(file);
   };
 
-  const handleDownloadFile = (fileId: string) => {
+  const handlePreviewFile = (fileId: string) => {
     const fileData = files[fileId];
-    if (!fileData) return;
+    if (!fileData || typeof window === 'undefined') return;
 
     try {
       const parsed = JSON.parse(fileData);
-      const link = document.createElement('a');
-      link.href = parsed.data;
-      link.download = parsed.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const win = window.open('', '_blank');
+      if (!win) return;
+      win.document.write(`<!DOCTYPE html><html><head><title>${parsed.name}</title></head><body style="margin:0;height:100vh"><iframe src="${parsed.data}" style="width:100%;height:100%;border:0"></iframe></body></html>`);
+      win.document.close();
     } catch (e) {
-      console.error('Error downloading file:', e);
+      console.error('Error previewing file:', e);
     }
   };
 
@@ -1109,10 +1193,10 @@ function FilesUploadSection({ solicitudId, patient, paymentMethod, prescription 
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleDownloadFile(id)}
+                      onClick={() => handlePreviewFile(id)}
                       className="border-[#8A6BA7] text-[#8A6BA7]"
                     >
-                      <Download className="h-4 w-4" />
+                      <Eye className="h-4 w-4" />
                     </Button>
                   )}
                   <label htmlFor={`file-${id}`}>
@@ -1251,6 +1335,8 @@ function InsuranceManagementSection({
   const [cartaPaseUrl, setCartaPaseUrl] = useState('');
   const [lastSubmission, setLastSubmission] = useState<string | null>(null);
   const insuranceStorageKey = `insurance-data-${solicitudId}`;
+  const filesStorageKey = `files-${solicitudId}`;
+  const [cartaPaseFile, setCartaPaseFile] = useState<{ name: string; uploadedAt?: string; data?: string } | null>(null);
 
   const servicioNombre = serviceData?.servicioNombre || solicitud.testType;
   const laboratorio = serviceData?.laboratorio || solicitud.servicioLaboratorio || 'Laboratorio por definir';
@@ -1269,6 +1355,42 @@ function InsuranceManagementSection({
       }
     }
   }, [insuranceStorageKey]);
+
+  useEffect(() => {
+    const loadCartaPaseFromStorage = () => {
+      const filesData = localStorage.getItem(filesStorageKey);
+      if (!filesData) {
+        setCartaPaseFile(null);
+        return;
+      }
+      try {
+        const parsedFiles = JSON.parse(filesData);
+        const cartaEntry = parsedFiles.cartaPase;
+        if (!cartaEntry) {
+          setCartaPaseFile(null);
+          return;
+        }
+        let payload = cartaEntry;
+        if (typeof cartaEntry === 'string') {
+          try {
+            payload = JSON.parse(cartaEntry);
+          } catch (error) {
+            payload = { data: cartaEntry };
+          }
+        }
+        setCartaPaseFile({
+          name: payload.name || 'Carta Pase',
+          uploadedAt: payload.uploadedAt,
+          data: payload.data || cartaEntry,
+        });
+      } catch (error) {
+        console.error('Error reading carta pase file', error);
+        setCartaPaseFile(null);
+      }
+    };
+
+    loadCartaPaseFromStorage();
+  }, [filesStorageKey]);
 
   const persistInsuranceData = (updates: Partial<StoredInsuranceData>) => {
     const payload: StoredInsuranceData = {
@@ -1334,6 +1456,57 @@ function InsuranceManagementSection({
     persistInsuranceData({ cartaPaseUrl: value });
   };
 
+  const handleCartaPaseUpload = (file?: File | null) => {
+    if (!file) return;
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('El archivo es demasiado grande. Máximo 10MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const payload = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        data: reader.result as string,
+        uploadedAt: new Date().toISOString(),
+      };
+      let filesData: Record<string, unknown> = {};
+      const storedFiles = localStorage.getItem(filesStorageKey);
+      if (storedFiles) {
+        try {
+          filesData = JSON.parse(storedFiles);
+        } catch (error) {
+          console.error('Error leyendo archivos almacenados', error);
+        }
+      }
+      filesData.cartaPase = JSON.stringify(payload);
+      localStorage.setItem(filesStorageKey, JSON.stringify(filesData));
+      setCartaPaseFile({ name: payload.name, uploadedAt: payload.uploadedAt, data: payload.data });
+      alert(`Carta pase "${file.name}" cargada correctamente`);
+    };
+    reader.onerror = () => {
+      alert('No fue posible cargar la carta pase.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDownloadCartaPase = () => {
+    if (cartaPaseFile?.data) {
+      const link = document.createElement('a');
+      link.href = cartaPaseFile.data;
+      link.download = cartaPaseFile.name || 'carta-pase';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+    if (cartaPaseUrl) {
+      window.open(cartaPaseUrl, '_blank');
+    }
+  };
+
   const statusMessage: Record<InsuranceStatus, string> = {
     pendiente: 'La solicitud está lista, pero aún no se ha enviado a la aseguradora.',
     enviado: 'Estamos esperando respuesta de la aseguradora.',
@@ -1367,25 +1540,33 @@ function InsuranceManagementSection({
           </div>
         </div>
         {insuranceStatus === 'aprobado' && (
-          <div>
-            <label className="text-sm font-medium text-[#2C2C2C] mb-2 block">Carta Pase (URL o Archivo)</label>
-            <div className="flex gap-2">
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-[#2C2C2C]">Carta Pase (URL o archivo)</label>
+            <Input
+              type="text"
+              value={cartaPaseUrl}
+              onChange={(e) => handleCartaChange(e.target.value)}
+              placeholder="Pega la URL de la carta pase"
+              className="border-[#D5D0C8]"
+            />
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <Input
-                type="text"
-                value={cartaPaseUrl}
-                onChange={(e) => handleCartaChange(e.target.value)}
-                placeholder="URL de la carta pase o subir archivo..."
-                className="border-[#D5D0C8] flex-1"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="border-[#D5D0C8]"
+                onChange={(event) => handleCartaPaseUpload(event.target.files?.[0])}
               />
-              <Button variant="outline" size="sm" className="border-[#7B5C45]">
-                <Upload className="h-4 w-4" />
-              </Button>
+              {(cartaPaseFile || cartaPaseUrl) && (
+                <Button variant="outline" size="sm" className="border-[#7B5C45]" onClick={handleDownloadCartaPase}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Ver carta pase
+                </Button>
+              )}
             </div>
-            {cartaPaseUrl && (
-              <a href={cartaPaseUrl} target="_blank" rel="noreferrer" className="text-xs text-[#8A6BA7] hover:underline flex items-center gap-1 mt-2">
-                <Download className="h-3 w-3" />
-                Ver carta pase
-              </a>
+            {cartaPaseFile?.uploadedAt && (
+              <p className="text-xs text-[#666]">
+                Archivo cargado el {new Date(cartaPaseFile.uploadedAt).toLocaleString('es-MX')} ({cartaPaseFile.name})
+              </p>
             )}
           </div>
         )}
@@ -1448,6 +1629,11 @@ function InsuranceManagementSection({
   );
 }
 
+type VTRequestSectionProps = {
+  solicitudId: string;
+  solicitud: Solicitud;
+  serviceData: SolicitudServiceData | null;
+};
 
 function VTRequestSection({ solicitudId, solicitud, serviceData }: VTRequestSectionProps) {
   const [status, setStatus] = useState<'pendiente' | 'enviado' | 'aprobado'>('pendiente');
@@ -1499,11 +1685,6 @@ function VTRequestSection({ solicitudId, solicitud, serviceData }: VTRequestSect
         ? `${patientData.firstName} ${patientData.lastName}`
         : solicitud.patient;
 
-      // Verificar si faltan datos críticos
-      if (!cotizacion.monto || cotizacion.monto === '0' || cotizacion.monto === 0) {
-        alert('⚠️ Advertencia: No se ha establecido un precio para el estudio. Por favor, completa la información en la sección "Gestión de Aseguradora".');
-      }
-
       // Generar ID VT único (formato: VT-YYYYMMDD-HHMMSS-XXX)
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
@@ -1525,13 +1706,21 @@ function VTRequestSection({ solicitudId, solicitud, serviceData }: VTRequestSect
         ? serviceSnapshot?.aseguradoraNombre || cotizacion.aseguradoraNombre || 'Aseguradora por definir'
         : 'Pago directo (Bolsillo)';
       const fallbackMonto = (serviceSnapshot?.precioUnitario ?? 0) * (serviceSnapshot?.cantidad ?? 1);
-      const montoFinal = Number(cotizacion.monto ?? 0) || fallbackMonto;
+      const cotizacionMonto = Number(cotizacion.monto ?? 0);
+      const montoFinal = cotizacionMonto > 0 ? cotizacionMonto : fallbackMonto;
+      if (montoFinal <= 0) {
+        alert('⚠️ Advertencia: No se ha establecido un precio para el estudio. Por favor, completa la información en la sección "Gestión de Aseguradora".');
+      }
       const servicioNombreFinal = serviceSnapshot?.servicioNombre || cotizacion.servicioNombre || solicitud.testType;
       const servicioIdFinal = serviceSnapshot?.servicioId || cotizacion.servicioId;
       const servicioCantidadFinal = serviceSnapshot?.cantidad || cotizacion.cantidad || 1;
       const laboratorioFinal = serviceSnapshot?.laboratorio || cotizacion.laboratorio || 'Tempus Labs, Inc';
       const aseguradoraIdFinal = serviceSnapshot?.aseguradoraId || cotizacion.aseguradoraId || solicitud.aseguradoraId;
       const aseguradoraRfcFinal = serviceSnapshot?.aseguradoraRfc || cotizacion.aseguradoraRfc;
+      const catalogInfo =
+        (servicioIdFinal && SERVICIOS_CATALOG.find((producto) => producto.id === servicioIdFinal)) ||
+        (servicioNombreFinal ? getServicioByName(servicioNombreFinal) : undefined);
+      const costoProducto = catalogInfo?.costo ?? fallbackMonto;
 
       const adminSolicitud = {
         id: vtId, // Usar el nuevo ID VT
@@ -1543,6 +1732,7 @@ function VTRequestSection({ solicitudId, solicitud, serviceData }: VTRequestSect
         servicioCantidad: servicioCantidadFinal,
         laboratorio: laboratorioFinal,
         monto: montoFinal,
+        costoCompra: costoProducto,
         aseguradora: aseguradoraNombre,
         aseguradoraId: aseguradoraIdFinal,
         metodoPago,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Eye,
@@ -12,6 +12,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { useSolicitudes } from "@/hooks/useSolicitudes";
 import type { Solicitud } from "@/types/solicitudes";
+import { CUENTAS_CATALOG } from "@/types/cuenta";
+import { ESPECIALISTAS_CATALOG } from "@/types/especialista";
+import type { AdminSolicitud } from "@/types/admin-solicitud";
+import { PRODUCTOS_CATALOG } from "@/types/servicio";
 
 const ORDER_FIELDS = [
   { value: "createdAt", label: "Fecha de solicitud" },
@@ -57,6 +62,7 @@ export default function SolicitudesListPage() {
   const [orderDirection, setOrderDirection] = useState<OrderDirection>("desc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [adminData, setAdminData] = useState<Map<string, AdminSolicitud>>(new Map());
 
   // Form state - Datos completos del paciente
   const [formData, setFormData] = useState({
@@ -81,6 +87,90 @@ export default function SolicitudesListPage() {
     postalCode: "",
     address: "",
   });
+
+  // Cargar datos de administración para cada solicitud
+  useEffect(() => {
+    const loadAdminData = () => {
+      const newAdminData = new Map<string, AdminSolicitud>();
+      solicitudes.forEach((solicitud) => {
+        const data = localStorage.getItem(`admin-solicitud-${solicitud.id}`);
+        if (data) {
+          try {
+            newAdminData.set(solicitud.id, JSON.parse(data));
+          } catch (e) {
+            console.error(`Error parsing admin data for ${solicitud.id}`, e);
+          }
+        }
+      });
+      setAdminData(newAdminData);
+    };
+    loadAdminData();
+  }, [solicitudes]);
+
+  // Función para obtener el estatus de la prueba
+  const getEstatusPrueba = (solicitudId: string): { label: string; color: string } => {
+    const admin = adminData.get(solicitudId);
+    if (!admin) {
+      return { label: 'Sin datos', color: 'bg-gray-100 text-gray-700 border-gray-200' };
+    }
+
+    // Verificar si la prueba está completada
+    if (admin.statusResultados === 'completado') {
+      return { label: 'Prueba realizada', color: 'bg-green-100 text-green-700 border-green-200' };
+    }
+
+    // Verificar si fue recibido en laboratorio
+    if (admin.statusLogistica === 'entregado-lab') {
+      return { label: 'Recibido en lab', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+    }
+
+    // Verificar si está en proceso
+    if (admin.statusResultados === 'en-proceso') {
+      return { label: 'En proceso', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' };
+    }
+
+    // Verificar si fue enviado al laboratorio
+    if (admin.statusCompra === 'enviado-lab') {
+      return { label: 'Enviado a lab', color: 'bg-purple-100 text-purple-700 border-purple-200' };
+    }
+
+    // Verificar estatus de logística
+    if (admin.statusLogistica === 'recolectado') {
+      return { label: 'Recolectado', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' };
+    }
+
+    if (admin.statusLogistica === 'en-ruta') {
+      return { label: 'En ruta', color: 'bg-cyan-100 text-cyan-700 border-cyan-200' };
+    }
+
+    if (admin.statusLogistica === 'programado') {
+      return { label: 'Recolección programada', color: 'bg-teal-100 text-teal-700 border-teal-200' };
+    }
+
+    // Estado inicial
+    return { label: 'Pendiente', color: 'bg-gray-100 text-gray-700 border-gray-200' };
+  };
+
+  // Función para obtener el estatus de facturación
+  const getEstatusFactura = (solicitudId: string): { label: string; color: string } => {
+    const admin = adminData.get(solicitudId);
+    if (!admin) {
+      return { label: 'Sin datos', color: 'bg-gray-100 text-gray-700 border-gray-200' };
+    }
+
+    // Verificar si está pagado
+    if (admin.statusCobranza === 'pagado') {
+      return { label: 'Pagado', color: 'bg-green-100 text-green-700 border-green-200' };
+    }
+
+    // Verificar si está facturado o timbrado
+    if (admin.statusFacturacion === 'facturado' || admin.statusFacturacion === 'timbrado') {
+      return { label: 'Facturado', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+    }
+
+    // Estado pendiente de factura
+    return { label: 'Pendiente Factura', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' };
+  };
 
   const conditionOptions = useMemo(() => {
     const unique = new Set<string>();
@@ -267,7 +357,7 @@ export default function SolicitudesListPage() {
     if (status === "loading") {
       return (
         <tr>
-          <td colSpan={4} className="py-16 text-center">
+          <td colSpan={6} className="py-16 text-center">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="h-8 w-8 animate-spin text-[#7B5C45]" />
               <p className="text-sm text-[#666]">Cargando solicitudes…</p>
@@ -280,7 +370,7 @@ export default function SolicitudesListPage() {
     if (status === "error") {
       return (
         <tr>
-          <td colSpan={4} className="py-16 text-center">
+          <td colSpan={6} className="py-16 text-center">
             <div className="space-y-4">
               <p className="text-sm font-medium text-red-600">{errorMessage}</p>
               <Button onClick={fetchSolicitudes} className="bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
@@ -295,7 +385,7 @@ export default function SolicitudesListPage() {
     if (filteredSolicitudes.length === 0) {
       return (
         <tr>
-          <td colSpan={4} className="py-16 text-center text-sm text-[#666]">
+          <td colSpan={6} className="py-16 text-center text-sm text-[#666]">
             No encontramos solicitudes con los criterios seleccionados.
           </td>
         </tr>
@@ -307,6 +397,9 @@ export default function SolicitudesListPage() {
       const editPath = `/ventas/solicitudes/editar/${solicitud.id}`;
       const viewPath = `/ventas/solicitudes/${solicitud.id}`;
       const isSelected = selectedIds.has(solicitud.id);
+
+      const estatusPrueba = getEstatusPrueba(solicitud.id);
+      const estatusFactura = getEstatusFactura(solicitud.id);
 
       return (
         <tr
@@ -340,14 +433,24 @@ export default function SolicitudesListPage() {
               </button>
             </div>
           </td>
+          <td className="px-4 py-4 text-sm text-[#2C2C2C] font-mono">
+            {solicitud.id}
+          </td>
           <td className="px-4 py-4 text-sm text-[#2C2C2C]">
             {solicitud.doctor}
           </td>
           <td className="px-4 py-4 text-sm text-[#2C2C2C]">
             {solicitud.patient}
           </td>
-          <td className="px-4 py-4 text-sm text-[#2C2C2C]">
-            {solicitud.condition}
+          <td className="px-4 py-4">
+            <Badge className={estatusPrueba.color}>
+              {estatusPrueba.label}
+            </Badge>
+          </td>
+          <td className="px-4 py-4">
+            <Badge className={estatusFactura.color}>
+              {estatusFactura.label}
+            </Badge>
           </td>
         </tr>
       );
@@ -436,24 +539,40 @@ export default function SolicitudesListPage() {
                       <h3 className="font-semibold text-[#2C2C2C] border-b pb-2">Información de la Solicitud</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="doctor">Médico Tratante *</Label>
-                          <Input
-                            id="doctor"
+                          <Label htmlFor="doctor">Médico Solicitante *</Label>
+                          <Select
                             value={formData.doctor}
-                            onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
-                            placeholder="Dr. Juan Pérez"
-                            className="border-[#D5D0C8]"
-                          />
+                            onValueChange={(value) => setFormData({ ...formData, doctor: value })}
+                          >
+                            <SelectTrigger className="border-[#D5D0C8]">
+                              <SelectValue placeholder="Selecciona un médico" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CUENTAS_CATALOG.map((cuenta) => (
+                                <SelectItem key={cuenta.id} value={cuenta.nombre}>
+                                  {cuenta.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="testType">Tipo de Estudio *</Label>
-                          <Input
-                            id="testType"
+                          <Select
                             value={formData.testType}
-                            onChange={(e) => setFormData({ ...formData, testType: e.target.value })}
-                            placeholder="Panel oncogenómico"
-                            className="border-[#D5D0C8]"
-                          />
+                            onValueChange={(value) => setFormData({ ...formData, testType: value })}
+                          >
+                            <SelectTrigger className="border-[#D5D0C8]">
+                              <SelectValue placeholder="Selecciona un estudio" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PRODUCTOS_CATALOG.map((producto) => (
+                                <SelectItem key={producto.id} value={producto.nombre}>
+                                  {producto.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -468,14 +587,22 @@ export default function SolicitudesListPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="vendorPhone">Teléfono Vendedor *</Label>
-                          <Input
-                            id="vendorPhone"
+                          <Label htmlFor="vendorPhone">Especialista *</Label>
+                          <Select
                             value={formData.vendorPhone}
-                            onChange={(e) => setFormData({ ...formData, vendorPhone: e.target.value })}
-                            placeholder="+52 55 1234 5678"
-                            className="border-[#D5D0C8]"
-                          />
+                            onValueChange={(value) => setFormData({ ...formData, vendorPhone: value })}
+                          >
+                            <SelectTrigger className="border-[#D5D0C8]">
+                              <SelectValue placeholder="Selecciona un especialista" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ESPECIALISTAS_CATALOG.map((especialista) => (
+                                <SelectItem key={especialista.id} value={especialista.telefono}>
+                                  {especialista.nombreCompleto}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </div>
@@ -566,11 +693,14 @@ export default function SolicitudesListPage() {
                       onChange={toggleVisibleSelection}
                     />
                   </th>
+                  <th className="px-4 py-3 text-sm font-semibold text-[#2C2C2C]">ID</th>
                   <th className="px-4 py-3 text-sm font-semibold text-[#2C2C2C]">Médico</th>
                   <th className="px-4 py-3 text-sm font-semibold text-[#2C2C2C]">Paciente</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-[#2C2C2C]">Padecimiento</th>
+                  <th className="px-4 py-3 text-sm font-semibold text-[#2C2C2C]">Estatus Prueba</th>
+                  <th className="px-4 py-3 text-sm font-semibold text-[#2C2C2C]">Estatus Factura</th>
                 </tr>
                 <tr className="bg-[#E8E3DB]">
+                  <th className="px-4 py-3"></th>
                   <th className="px-4 py-3"></th>
                   <th className="px-4 py-3">
                     <Input
@@ -588,20 +718,8 @@ export default function SolicitudesListPage() {
                       className="h-9 border-[#D5D0C8] bg-white text-sm text-[#2C2C2C]"
                     />
                   </th>
-                  <th className="px-4 py-3">
-                    <select
-                      value={conditionFilter}
-                      onChange={(event) => setConditionFilter(event.target.value)}
-                      className="h-9 w-full rounded-md border border-[#D5D0C8] bg-white px-3 text-sm text-[#666] focus:border-[#7B5C45] focus:outline-none"
-                    >
-                      <option value="all">== Seleccione una opción ==</option>
-                      {conditionOptions.map((condition) => (
-                        <option key={condition} value={condition}>
-                          {condition}
-                        </option>
-                      ))}
-                    </select>
-                  </th>
+                  <th className="px-4 py-3"></th>
+                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>{renderTableBody()}</tbody>
