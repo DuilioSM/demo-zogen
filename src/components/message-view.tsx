@@ -806,7 +806,7 @@ export function MessageView({ conversationId, phoneNumber, contactName, channelI
               </Card>
 
               {phoneNumber && (
-                <Link href={`/ventas/crm-zogen/solicitudes/editar/${phoneNumber.replace(/\D/g, '')}`}>
+                <Link href={`/zogen-labs/ventas-zlabs/solicitudes/editar/${phoneNumber.replace(/\D/g, '')}`}>
                   <Button className="w-full bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
                     <Edit className="mr-2 h-4 w-4" />
                     Editar Solicitud

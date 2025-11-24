@@ -25,74 +25,94 @@ type NavItem = {
   }[];
 };
 
-type ModuleKey = 'labs' | 'meddev' | 'analisis';
+type ModuleKey = 'labs' | 'meddev' | 'kpis';
 
 const moduleOptions: { id: ModuleKey; label: string }[] = [
   { id: 'labs', label: 'Zogen Labs' },
-  { id: 'meddev', label: 'Zogen Med Dev' },
-  { id: 'analisis', label: 'Zogen Análisis' },
+  { id: 'meddev', label: 'Zogen MedDev' },
+  { id: 'kpis', label: 'Zogen KPIs' },
 ];
 
 const defaultSectionsPerModule: Record<ModuleKey, string[]> = {
-  labs: ['Ventas', 'Administración', 'Configuración'],
-  meddev: ['Operación Med Dev'],
-  analisis: ['Reportes y Dashboards'],
+  labs: ['Ventas-ZLabs', 'Administración-ZLabs', 'Configuración-ZLabs'],
+  meddev: ['Ventas', 'Compras y Gastos', 'Almacén', 'Configuración'],
+  kpis: ['Análisis'],
 };
 
 const moduleNavigation: Record<ModuleKey, NavItem[]> = {
   labs: [
     {
-      label: 'Ventas',
+      label: 'Ventas-ZLabs',
       icon: <MessageSquare className="h-5 w-5" />,
       children: [
-        { label: 'CRM WhatsApp', href: '/ventas/crm-whatsapp', description: 'Relación con médicos vía WhatsApp' },
-        { label: 'Administración de Solicitudes', href: '/ventas/solicitudes', description: 'Cotizaciones y VT del laboratorio' },
-        { label: 'Prospectos', href: '/ventas/prospectos', description: 'Nuevos contactos y cuentas médicas' },
+        { label: 'CRM WhatsApp', href: '/zogen-labs/ventas-zlabs/crm-whatsapp', description: 'Relación con médicos vía WhatsApp' },
+        { label: 'Administración de Solicitudes', href: '/zogen-labs/ventas-zlabs/solicitudes', description: 'Cotizaciones y VT del laboratorio' },
+        { label: 'Prospectos', href: '/zogen-labs/ventas-zlabs/prospectos', description: 'Nuevos contactos y cuentas médicas' },
       ],
     },
     {
-      label: 'Administración',
+      label: 'Administración-ZLabs',
       icon: <Building2 className="h-5 w-5" />,
       children: [
-        { label: 'Aprobación VT', href: '/administracion/aprobacion-vt', description: 'Control de solicitudes VT' },
-        { label: 'Logística y Resultados', href: '/administracion/logistica-resultados', description: 'Trazabilidad de recolecciones y resultados' },
-        { label: 'Pagos y Proveedores', href: '/administracion/pagos-proveedores', description: 'Pagos a laboratorios' },
-        { label: 'Facturación y Cobranza', href: '/administracion/facturacion-cobranza', description: 'Ciclo financiero de VT' },
+        { label: 'Aprobación VT', href: '/zogen-labs/administracion-zlabs/aprobacion-vt', description: 'Control de solicitudes VT' },
+        { label: 'Logística y Resultados', href: '/zogen-labs/administracion-zlabs/logistica-resultados', description: 'Trazabilidad de recolecciones y resultados' },
+        { label: 'Pagos y Proveedores', href: '/zogen-labs/administracion-zlabs/pagos-proveedores', description: 'Pagos a laboratorios' },
+        { label: 'Facturación y Cobranza', href: '/zogen-labs/administracion-zlabs/facturacion-cobranza', description: 'Ciclo financiero de VT' },
+      ],
+    },
+    {
+      label: 'Configuración-ZLabs',
+      icon: <Settings2 className="h-5 w-5" />,
+      children: [
+        { label: 'Productos', href: '/zogen-labs/configuracion-zlabs/productos', description: 'Gestión de servicios Labs' },
+        { label: 'Laboratorios', href: '/zogen-labs/configuracion-zlabs/laboratorios', description: 'Catálogo de laboratorios' },
+        { label: 'Aseguradoras', href: '/zogen-labs/configuracion-zlabs/aseguradoras', description: 'Convenios activos' },
+        { label: 'Especialistas', href: '/zogen-labs/configuracion-zlabs/especialistas', description: 'Fuerza comercial' },
+        { label: 'Cuentas', href: '/zogen-labs/configuracion-zlabs/cuentas', description: 'Hospitales y médicos' },
+        { label: 'Comisiones', href: '/zogen-labs/configuracion-zlabs/comisiones', description: 'Modelos de comisión' },
+        { label: 'Descuentos', href: '/zogen-labs/configuracion-zlabs/descuentos', description: 'Programas promocionales' },
+      ],
+    },
+  ],
+  meddev: [
+    {
+      label: 'Ventas',
+      icon: <MessageSquare className="h-5 w-5" />,
+      children: [
+        { label: 'Equipo Médico', href: '/zogen-meddev/ventas/equipo-medico', description: 'Ventas de equipos médicos' },
+        { label: 'Reactivos', href: '/zogen-meddev/ventas/reactivos', description: 'Ventas de reactivos' },
+      ],
+    },
+    {
+      label: 'Compras y Gastos',
+      icon: <Factory className="h-5 w-5" />,
+      children: [
+        { label: 'Registro de Compras y Gastos', href: '/zogen-meddev/compras-gastos', description: 'Gestión de compras y gastos' },
+      ],
+    },
+    {
+      label: 'Almacén',
+      icon: <Building2 className="h-5 w-5" />,
+      children: [
+        { label: 'Inventarios', href: '/zogen-meddev/almacen', description: 'Control de inventarios' },
       ],
     },
     {
       label: 'Configuración',
       icon: <Settings2 className="h-5 w-5" />,
       children: [
-        { label: 'Productos', href: '/configuracion/productos', description: 'Gestión de servicios Labs' },
-        { label: 'Laboratorios', href: '/configuracion/laboratorios', description: 'Catálogo de laboratorios' },
-        { label: 'Aseguradoras', href: '/configuracion/aseguradoras', description: 'Convenios activos' },
-        { label: 'Especialistas', href: '/configuracion/especialistas', description: 'Fuerza comercial' },
-        { label: 'Cuentas', href: '/configuracion/cuentas', description: 'Hospitales y médicos' },
-        { label: 'Comisiones', href: '/configuracion/comisiones', description: 'Modelos de comisión' },
-        { label: 'Descuentos', href: '/configuracion/descuentos', description: 'Programas promocionales' },
+        { label: 'Productos', href: '/zogen-meddev/configuracion/productos', description: 'Catálogo de equipos médicos' },
+        { label: 'Almacenes', href: '/zogen-meddev/configuracion/almacenes', description: 'Ubicaciones de inventario' },
+        { label: 'Clientes', href: '/zogen-meddev/configuracion/clientes', description: 'Clientes con RFC' },
       ],
     },
   ],
-  meddev: [
+  kpis: [
     {
-      label: 'Operación Med Dev',
-      icon: <Factory className="h-5 w-5" />,
-      children: [
-        { label: 'Ventas', href: '/med-dev/ventas', description: 'Pipeline de equipos médicos' },
-        { label: 'Administración', href: '/med-dev/administracion', description: 'Órdenes e instalaciones' },
-        { label: 'Compras', href: '/med-dev/compras', description: 'Abastecimiento a proveedores' },
-        { label: 'Inventarios', href: '/med-dev/inventarios', description: 'Stock por almacenes' },
-        { label: 'Configuración', href: '/med-dev/configuracion', description: 'Productos, precios y almacenes' },
-      ],
-    },
-  ],
-  analisis: [
-    {
-      label: 'Reportes y Dashboards',
+      label: 'Análisis',
       icon: <BarChart3 className="h-5 w-5" />,
       children: [
-        { label: 'Zogen Análisis', href: '/analisis', description: 'Reportes financieros y KPIs corporativos' },
+        { label: 'Zogen KPIs', href: '/zogen-kpis/analisis', description: 'Reportes financieros y KPIs corporativos' },
       ],
     },
   ],
@@ -103,8 +123,9 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const inferModuleFromPath = (path: string | null): ModuleKey => {
     if (!path) return 'labs';
-    if (path.startsWith('/med-dev')) return 'meddev';
-    if (path.startsWith('/analisis')) return 'analisis';
+    if (path.startsWith('/zogen-meddev')) return 'meddev';
+    if (path.startsWith('/zogen-kpis')) return 'kpis';
+    if (path.startsWith('/zogen-labs')) return 'labs';
     return 'labs';
   };
   const initialModule = inferModuleFromPath(pathname);
@@ -131,11 +152,11 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
       window.localStorage.setItem('zogen-module', module);
     }
     if (module === 'labs') {
-      router.push('/ventas/solicitudes');
+      router.push('/zogen-labs/ventas-zlabs/crm-whatsapp');
     } else if (module === 'meddev') {
-      router.push('/med-dev/ventas');
-    } else if (module === 'analisis') {
-      router.push('/analisis');
+      router.push('/zogen-meddev/compras-gastos');
+    } else if (module === 'kpis') {
+      router.push('/zogen-kpis/analisis');
     }
   };
 
@@ -146,9 +167,6 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   };
 
   const isActive = (href: string) => {
-    if (href === '/administracion') {
-      return pathname === href;
-    }
     return pathname?.startsWith(href);
   };
 
@@ -160,7 +178,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   };
 
   // Determinar el background según la ruta
-  const isAdminRoute = pathname?.startsWith('/administracion');
+  const isAdminRoute = pathname?.includes('/administracion-zlabs');
   const bgClass = isAdminRoute
     ? 'bg-gradient-to-br from-purple-50 via-purple-100/30 to-white'
     : 'bg-gray-50';
@@ -175,7 +193,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <Link href="/ventas/crm-whatsapp" className="flex items-center gap-3">
+            <Link href="/zogen-labs/ventas-zlabs/crm-whatsapp" className="flex items-center gap-3">
               <Image
                 src="/images/zogen-logo.png"
                 alt="Zogen"
