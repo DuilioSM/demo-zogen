@@ -56,8 +56,8 @@ const moduleNavigation: Record<ModuleKey, NavItem[]> = {
       children: [
         { label: 'Aprobación VT', href: '/zogen-labs/administracion-zlabs/aprobacion-vt', description: 'Control de solicitudes VT' },
         { label: 'Logística y Resultados', href: '/zogen-labs/administracion-zlabs/logistica-resultados', description: 'Trazabilidad de recolecciones y resultados' },
-        { label: 'Pagos y Proveedores', href: '/zogen-labs/administracion-zlabs/pagos-proveedores', description: 'Pagos a laboratorios' },
         { label: 'Facturación y Cobranza', href: '/zogen-labs/administracion-zlabs/facturacion-cobranza', description: 'Ciclo financiero de VT' },
+        { label: 'Pagos y Proveedores', href: '/zogen-labs/administracion-zlabs/pagos-proveedores', description: 'Pagos a laboratorios' },
       ],
     },
     {
