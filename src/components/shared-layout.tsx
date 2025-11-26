@@ -35,8 +35,8 @@ const moduleOptions: { id: ModuleKey; label: string }[] = [
 
 const defaultSectionsPerModule: Record<ModuleKey, string[]> = {
   labs: ['Ventas-ZLabs', 'Administración-ZLabs', 'Configuración-ZLabs'],
-  meddev: ['Ventas', 'Compras y Gastos', 'Almacén', 'Configuración'],
-  kpis: ['Análisis'],
+  meddev: ['Ventas', 'Compras y Gastos', 'Inventarios', 'Configuración'],
+  kpis: ['Generales', 'Zogen Labs', 'Zogen Med Dev'],
 };
 
 const moduleNavigation: Record<ModuleKey, NavItem[]> = {
@@ -46,8 +46,8 @@ const moduleNavigation: Record<ModuleKey, NavItem[]> = {
       icon: <MessageSquare className="h-5 w-5" />,
       children: [
         { label: 'CRM WhatsApp', href: '/zogen-labs/ventas-zlabs/crm-whatsapp', description: 'Relación con médicos vía WhatsApp' },
-        { label: 'Administración de Solicitudes', href: '/zogen-labs/ventas-zlabs/solicitudes', description: 'Cotizaciones y VT del laboratorio' },
-        { label: 'Prospectos', href: '/zogen-labs/ventas-zlabs/prospectos', description: 'Nuevos contactos y cuentas médicas' },
+        { label: 'Administración de Solicitudes', href: '/ventas/solicitudes', description: 'Cotizaciones y VT del laboratorio' },
+        { label: 'Prospectos', href: '/ventas/prospectos', description: 'Nuevos contactos y cuentas médicas' },
       ],
     },
     {
@@ -87,14 +87,16 @@ const moduleNavigation: Record<ModuleKey, NavItem[]> = {
       label: 'Compras y Gastos',
       icon: <Factory className="h-5 w-5" />,
       children: [
-        { label: 'Registro de Compras y Gastos', href: '/zogen-meddev/compras-gastos', description: 'Gestión de compras y gastos' },
+        { label: 'Reactivos', href: '/zogen-meddev/compras-gastos/reactivos', description: 'Gastos de reactivos' },
+        { label: 'Equipo Médico', href: '/zogen-meddev/compras-gastos/equipo-medico', description: 'Gastos de equipo médico' },
+        { label: 'Gastos Generales', href: '/zogen-meddev/compras-gastos/otros-gastos', description: 'Gastos operativos generales' },
       ],
     },
     {
-      label: 'Almacén',
+      label: 'Inventarios',
       icon: <Building2 className="h-5 w-5" />,
       children: [
-        { label: 'Inventarios', href: '/zogen-meddev/almacen', description: 'Control de inventarios' },
+        { label: 'Control de Inventarios', href: '/zogen-meddev/almacen', description: 'Visión de stock' },
       ],
     },
     {
@@ -109,10 +111,31 @@ const moduleNavigation: Record<ModuleKey, NavItem[]> = {
   ],
   kpis: [
     {
-      label: 'Análisis',
+      label: 'Generales',
       icon: <BarChart3 className="h-5 w-5" />,
       children: [
-        { label: 'Zogen KPIs', href: '/zogen-kpis/analisis', description: 'Reportes financieros y KPIs corporativos' },
+        { label: 'Reporte financiero', href: '/zogen-kpis/generales/reporte-financiero', description: 'Ingresos vs gastos' },
+        { label: 'Reporte YTD', href: '/zogen-kpis/generales/reporte-ytd', description: 'Avance anual' },
+        { label: 'Reporte de ingresos', href: '/zogen-kpis/generales/reporte-ingresos', description: 'Detalle por línea' },
+      ],
+    },
+    {
+      label: 'Zogen Labs',
+      icon: <BarChart3 className="h-5 w-5" />,
+      children: [
+        { label: 'Reporte YTD', href: '/zogen-kpis/zogen-labs/reporte-ytd', description: 'Avance anual Labs' },
+        { label: 'Reporte de ingresos', href: '/zogen-kpis/zogen-labs/reporte-ingresos', description: 'Detalle por canal' },
+        { label: 'Reporte de KPIs', href: '/zogen-kpis/zogen-labs/reporte-kpis', description: 'Indicadores operativos' },
+        { label: 'Reporte de cobranza', href: '/zogen-kpis/zogen-labs/reporte-cobranza', description: 'Seguimiento de pagos' },
+      ],
+    },
+    {
+      label: 'Zogen Med Dev',
+      icon: <BarChart3 className="h-5 w-5" />,
+      children: [
+        { label: 'Reporte financiero', href: '/zogen-kpis/zogen-meddev/reporte-financiero', description: 'Ingresos y gastos MedDev' },
+        { label: 'Reporte YTD', href: '/zogen-kpis/zogen-meddev/reporte-ytd', description: 'Avance anual MedDev' },
+        { label: 'Reporte de ingresos', href: '/zogen-kpis/zogen-meddev/reporte-ingresos', description: 'Detalle por categoría' },
       ],
     },
   ],
@@ -154,20 +177,29 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
     if (module === 'labs') {
       router.push('/zogen-labs/ventas-zlabs/crm-whatsapp');
     } else if (module === 'meddev') {
-      router.push('/zogen-meddev/compras-gastos');
+      router.push('/zogen-meddev/ventas/equipo-medico');
     } else if (module === 'kpis') {
       router.push('/zogen-kpis/analisis');
     }
   };
 
   const toggleSection = (label: string) => {
-    setExpandedSections((prev) =>
-      prev.includes(label) ? prev.filter((s) => s !== label) : [...prev, label]
-    );
+    setExpandedSections((prev) => {
+      if (currentModule === 'kpis') {
+        const isOpen = prev.includes(label);
+        const sections = ['Generales', 'Zogen Labs', 'Zogen Med Dev'];
+        return isOpen ? sections.filter((section) => section !== label) : [...prev, label];
+      }
+      const isOpen = prev.includes(label);
+      return isOpen ? prev.filter((s) => s !== label) : [...prev, label];
+    });
   };
 
   const isActive = (href: string) => {
-    return pathname?.startsWith(href);
+    if (!pathname) return false;
+    const normalizedPath = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+    const normalizedHref = href.endsWith('/') && href !== '/' ? href.slice(0, -1) : href;
+    return normalizedPath === normalizedHref || normalizedPath.startsWith(`${normalizedHref}/`);
   };
 
   const handleLogout = () => {
@@ -252,7 +284,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     {expandedSections.includes(item.label) && (
                       <div className="ml-4 mt-1 space-y-1">
                         {item.children.map((child) => (
-                          <Link key={child.href} href={child.href}>
+                          <Link key={child.href} href={child.href} onClick={() => handleChildClick(item.label)}>
                             <div
                               className={`px-3 py-2 rounded-lg text-sm ${
                                 isActive(child.href)

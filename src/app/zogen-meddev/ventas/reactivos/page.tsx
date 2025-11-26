@@ -1,111 +1,68 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useVentasMedDev } from '@/hooks/useVentasMedDev';
 import { useProductosMedDev, useClientesMedDev } from '@/hooks/useMedDevStorage';
-import { Plus, ShoppingCart, FileText, DollarSign, Edit, Trash2 } from 'lucide-react';
+import { Plus, Download } from 'lucide-react';
+import { VentaMedDevDialog } from '@/components/VentaMedDevDialog';
+import { generateFacturaMedDevPDF } from '@/components/FacturaMedDevPDF';
 import type { VentaMedDev } from '@/types/meddev';
+import {
+  FacturacionCobranzaTabs,
+  FormContainer,
+  FormField,
+  FormActions,
+  StatusMessage,
+} from '@/components/FacturacionCobranzaTabs';
+
+type Status = 'PendienteFacturar' | 'Facturado' | 'Cobrado';
 
 export default function ReactivosPage() {
-  const { ventas, loading, addVenta, updateVenta, deleteVenta, facturarVenta, cobrarVenta } = useVentasMedDev();
+  const { ventas, loading, addVenta, facturarVenta, cobrarVenta } = useVentasMedDev();
   const { productos } = useProductosMedDev();
   const { clientes } = useClientesMedDev();
-  const productosReactivos = productos.filter((producto) => producto.tipo === 'reactivo');
 
-  const [activeTab, setActiveTab] = useState<'vendido' | 'facturado' | 'cobrado'>('vendido');
-  const [isAdding, setIsAdding] = useState(false);
-  const [formData, setFormData] = useState({
-    clienteId: '',
-    productos: [{ productoId: '', cantidad: 1, precioUnitario: 0 }],
-    notas: '',
-  });
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Filter ventas by category and status
-  const ventasFiltradas = ventas.filter(
-    (v) => v.categoria === 'reactivos' && v.estatus === activeTab
-  );
+  const ventasReactivos = ventas.filter((v) => v.categoria === 'reactivos');
 
-  const handleProductoChange = (index: number, productoId: string) => {
-    const producto = productosReactivos.find((p) => p.id === productoId);
-    const newProductos = [...formData.productos];
-    newProductos[index] = {
-      productoId,
-      cantidad: 1,
-      precioUnitario: producto?.precio || 0,
-    };
-    setFormData({ ...formData, productos: newProductos });
-  };
-
-  const handleCantidadChange = (index: number, cantidad: number) => {
-    const newProductos = [...formData.productos];
-    newProductos[index].cantidad = cantidad;
-    setFormData({ ...formData, productos: newProductos });
-  };
-
-  const addProductoLine = () => {
-    setFormData({
-      ...formData,
-      productos: [...formData.productos, { productoId: '', cantidad: 1, precioUnitario: 0 }],
-    });
-  };
-
-  const removeProductoLine = (index: number) => {
-    setFormData({
-      ...formData,
-      productos: formData.productos.filter((_, i) => i !== index),
-    });
-  };
-
-  const calculateTotals = () => {
-    const subtotal = formData.productos.reduce(
-      (sum, p) => sum + p.cantidad * p.precioUnitario,
-      0
-    );
+  const handleSubmitVenta = (data: {
+    clienteId: string;
+    productos: { productoId: string; cantidad: number; precioUnitario: number }[];
+    notas: string;
+  }) => {
+    const subtotal = data.productos.reduce((sum, p) => sum + p.cantidad * p.precioUnitario, 0);
     const iva = subtotal * 0.16;
     const total = subtotal + iva;
-    return { subtotal, iva, total };
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const { subtotal, iva, total } = calculateTotals();
 
     addVenta({
       fecha: new Date().toISOString(),
-      clienteId: formData.clienteId,
+      clienteId: data.clienteId,
       categoria: 'reactivos',
-      productos: formData.productos,
+      productos: data.productos,
       subtotal,
       iva,
       total,
       estatus: 'vendido',
-      notas: formData.notas,
+      notas: data.notas,
     });
-
-    setFormData({
-      clienteId: '',
-      productos: [{ productoId: '', cantidad: 1, precioUnitario: 0 }],
-      notas: '',
-    });
-    setIsAdding(false);
   };
 
-  const handleFacturar = (venta: VentaMedDev) => {
-    const facturaNumero = prompt('Ingrese el número de factura:');
-    if (facturaNumero) {
-      facturarVenta(venta.id, facturaNumero);
-    }
+  const getStatus = (venta: VentaMedDev): Status => {
+    if (venta.estatus === 'cobrado') return 'Cobrado';
+    if (venta.estatus === 'facturado') return 'Facturado';
+    if (venta.estatus === 'vendido') return 'PendienteFacturar';
+    return 'PendienteFacturar';
   };
 
-  const handleCobrar = (venta: VentaMedDev) => {
-    const metodoPago = prompt('Ingrese el método de pago (ej: Transferencia, Cheque, Efectivo):');
-    if (metodoPago) {
-      cobrarVenta(venta.id, metodoPago);
+  const handleUpdate = (id: string, updates: Partial<VentaMedDev>) => {
+    if (updates.facturaNumero) {
+      facturarVenta(id, updates.facturaNumero);
+    } else if (updates.metodoPago && updates.cuentaCobro && updates.lugarRecepcion) {
+      cobrarVenta(id, updates.metodoPago, updates.cuentaCobro, updates.lugarRecepcion);
     }
   };
 
@@ -113,294 +70,263 @@ export default function ReactivosPage() {
     return <div className="p-6">Cargando...</div>;
   }
 
-  const { subtotal: formSubtotal, iva: formIva, total: formTotal } = calculateTotals();
-
   return (
-    <div className="p-6 overflow-auto h-full bg-gray-50">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Ventas - Reactivos</h1>
-            <p className="text-gray-600">Gestión de ventas de reactivos</p>
-          </div>
-          {!isAdding && (
-            <Button onClick={() => setIsAdding(true)} className="bg-purple-600 hover:bg-purple-700">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <p className="text-xs uppercase tracking-[0.3em] text-purple-600 font-semibold">
+            Zogen Med Dev · Ventas
+          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Reactivos</h1>
+              <p className="text-gray-600 mt-1">Ciclo completo de venta: Vendido, Facturado, Cobrado</p>
+            </div>
+            <Button onClick={() => setIsDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
               <Plus className="h-4 w-4 mr-2" />
               Nueva Venta
             </Button>
-          )}
+          </div>
         </div>
 
-        {/* Formulario de Nueva Venta */}
-        {isAdding && (
-          <Card className="border-purple-200 bg-purple-50/50">
-            <CardHeader>
-              <CardTitle>Nueva Venta - Reactivos</CardTitle>
-              <CardDescription>Complete los datos de la venta</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cliente">Cliente *</Label>
-                  <select
-                    id="cliente"
-                    value={formData.clienteId}
-                    onChange={(e) => setFormData({ ...formData, clienteId: e.target.value })}
-                    className="w-full rounded-md border border-gray-300 p-2"
-                    required
-                  >
-                    <option value="">Seleccione un cliente</option>
-                    {clientes.map((cliente) => (
-                      <option key={cliente.id} value={cliente.id}>
-                        {cliente.razonSocial} ({cliente.rfc})
-                      </option>
-                    ))}
-                  </select>
+        <FacturacionCobranzaTabs
+          items={ventasReactivos}
+          getStatus={getStatus}
+          onUpdate={handleUpdate}
+          renderItemHeader={(venta) => {
+            const cliente = clientes.find((c) => c.id === venta.clienteId);
+            return (
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline" className="text-purple-700 border-purple-200 bg-purple-50">
+                      {venta.folio}
+                    </Badge>
+                    {venta.facturaNumero && (
+                      <Badge variant="outline" className="text-blue-700 border-blue-300 bg-blue-50">
+                        {venta.facturaNumero}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="font-semibold text-lg">{cliente?.razonSocial || 'Cliente desconocido'}</p>
+                  <p className="text-sm text-gray-600">RFC: {cliente?.rfc || 'N/A'}</p>
                 </div>
+                <div className="text-right">
+                  <p className="font-bold text-lg text-purple-700">
+                    ${venta.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-gray-500">{new Date(venta.fecha).toLocaleDateString('es-MX')}</p>
+                </div>
+              </div>
+            );
+          }}
+          renderItemDetails={(venta) => {
+            const status = getStatus(venta);
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Productos *</Label>
-                    <Button type="button" size="sm" variant="outline" onClick={addProductoLine}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      Agregar Producto
+            if (status === 'Facturado' || status === 'Cobrado') {
+              return (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-600 space-y-1">
+                      {venta.metodoPago && <p>Método de Pago: <span className="font-medium">{venta.metodoPago}</span></p>}
+                      {venta.cuentaCobro && <p>Cuenta: <span className="font-medium">{venta.cuentaCobro}</span></p>}
+                      {venta.lugarRecepcion && <p>Lugar: <span className="font-medium">{venta.lugarRecepcion}</span></p>}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-purple-600 border-purple-300"
+                      onClick={() => {
+                        const cliente = clientes.find((c) => c.id === venta.clienteId);
+                        if (cliente) {
+                          generateFacturaMedDevPDF({ venta, cliente, productos });
+                        }
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Ver Factura
                     </Button>
                   </div>
-                  {formData.productos.map((prod, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-2 items-end">
-                      <div className="col-span-6 space-y-2">
-                        <Label>Producto</Label>
-                        <select
-                          value={prod.productoId}
-                          onChange={(e) => handleProductoChange(index, e.target.value)}
-                          className="w-full rounded-md border border-gray-300 p-2"
-                          required
-                        >
-                          <option value="">Seleccione producto</option>
-                          {productosReactivos.map((producto) => (
-                            <option key={producto.id} value={producto.id}>
-                              {producto.nombre} - ${producto.precio.toLocaleString('es-MX')}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="col-span-2 space-y-2">
-                        <Label>Cantidad</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={prod.cantidad}
-                          onChange={(e) => handleCantidadChange(index, parseInt(e.target.value) || 1)}
-                          required
-                        />
-                      </div>
-                      <div className="col-span-3 space-y-2">
-                        <Label>Precio Unit.</Label>
-                        <Input
-                          type="number"
-                          value={prod.precioUnitario}
-                          disabled
-                          className="bg-gray-100"
-                        />
-                      </div>
-                      <div className="col-span-1">
-                        {formData.productos.length > 1 && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600"
-                            onClick={() => removeProductoLine(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
                 </div>
+              );
+            }
+            return null;
+          }}
+          renderFacturacionForm={(venta, onUpdate, onCancel) => (
+            <FacturacionForm venta={venta} clientes={clientes} productos={productos} onUpdate={onUpdate} onCancel={onCancel} />
+          )}
+          renderCobranzaForm={(venta, onUpdate, onCancel) => (
+            <CobranzaForm venta={venta} onUpdate={onUpdate} onCancel={onCancel} />
+          )}
+        />
+      </div>
 
-                <div className="grid grid-cols-3 gap-4 p-4 bg-gray-100 rounded-lg">
-                  <div>
-                    <p className="text-sm text-gray-600">Subtotal</p>
-                    <p className="text-lg font-semibold">${formSubtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">IVA (16%)</p>
-                    <p className="text-lg font-semibold">${formIva.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total</p>
-                    <p className="text-xl font-bold text-purple-600">${formTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
-                  </div>
-                </div>
+      <VentaMedDevDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        categoria="reactivos"
+        onSubmit={handleSubmitVenta}
+      />
+    </div>
+  );
+}
 
-                <div className="space-y-2">
-                  <Label htmlFor="notas">Notas</Label>
-                  <textarea
-                    id="notas"
-                    value={formData.notas}
-                    onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                    className="w-full rounded-md border border-gray-300 p-2 min-h-[80px]"
-                    placeholder="Observaciones adicionales..."
-                  />
-                </div>
+// Formulario para estado "Vendido" -> "Facturado" (Timbrado)
+function FacturacionForm({
+  venta,
+  clientes,
+  productos,
+  onUpdate,
+  onCancel
+}: {
+  venta: VentaMedDev;
+  clientes: any[];
+  productos: any[];
+  onUpdate: (updates: Partial<VentaMedDev>) => void;
+  onCancel: () => void;
+}) {
+  const cliente = clientes.find((c) => c.id === venta.clienteId);
+  const [facturaNumero, setFacturaNumero] = useState('');
+  const [fechaFactura, setFechaFactura] = useState(new Date().toISOString().split('T')[0]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-                <div className="flex gap-3">
-                  <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
-                    Guardar Venta
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => {
-                    setIsAdding(false);
-                    setFormData({
-                      clienteId: '',
-                      productos: [{ productoId: '', cantidad: 1, precioUnitario: 0 }],
-                      notas: '',
-                    });
-                  }}>
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!facturaNumero.trim() || !fechaFactura) {
+      alert('Por favor completa todos los campos.');
+      return;
+    }
 
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab('vendido')}
-            className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === 'vendido'
-                ? 'border-b-2 border-purple-600 text-purple-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <ShoppingCart className="h-4 w-4 inline mr-2" />
-            Vendido
-          </button>
-          <button
-            onClick={() => setActiveTab('facturado')}
-            className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === 'facturado'
-                ? 'border-b-2 border-purple-600 text-purple-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <FileText className="h-4 w-4 inline mr-2" />
-            Facturado
-          </button>
-          <button
-            onClick={() => setActiveTab('cobrado')}
-            className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === 'cobrado'
-                ? 'border-b-2 border-purple-600 text-purple-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <DollarSign className="h-4 w-4 inline mr-2" />
-            Cobrado
-          </button>
+    setIsProcessing(true);
+    setTimeout(() => {
+      // Generar PDF automáticamente
+      if (cliente) {
+        generateFacturaMedDevPDF({ venta, cliente, productos });
+      }
+
+      onUpdate({ facturaNumero });
+      setIsProcessing(false);
+      onCancel();
+    }, 1000);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <FormContainer title="Generar y Timbrar Factura">
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+          <p className="text-sm font-medium text-blue-900">Datos del Cliente</p>
+          <div className="mt-2 text-sm text-blue-800 space-y-1">
+            <p><span className="font-semibold">Cliente:</span> {cliente?.razonSocial || 'N/A'}</p>
+            <p><span className="font-semibold">RFC:</span> {cliente?.rfc || 'N/A'}</p>
+          </div>
         </div>
 
-        {/* Lista de Ventas */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {activeTab === 'vendido' && 'Ventas Realizadas'}
-              {activeTab === 'facturado' && 'Ventas Facturadas'}
-              {activeTab === 'cobrado' && 'Ventas Cobradas'}
-            </CardTitle>
-            <CardDescription>
-              {ventasFiltradas.length} venta{ventasFiltradas.length !== 1 ? 's' : ''} en estado {activeTab}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {ventasFiltradas.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p>No hay ventas en este estado</p>
-                </div>
-              ) : (
-                ventasFiltradas.map((venta) => {
-                  const cliente = clientes.find((c) => c.id === venta.clienteId);
-                  return (
-                    <div
-                      key={venta.id}
-                      className="flex items-start justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Badge variant="outline" className="text-purple-700 border-purple-200 bg-purple-50">
-                            {venta.folio}
-                          </Badge>
-                          <h3 className="font-semibold text-gray-900">
-                            {cliente?.razonSocial || 'Cliente desconocido'}
-                          </h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-2">
-                          <p>Fecha: {new Date(venta.fecha).toLocaleDateString('es-MX')}</p>
-                          <p>Total: ${venta.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
-                          {venta.facturaNumero && (
-                            <p>Factura: {venta.facturaNumero}</p>
-                          )}
-                          {venta.metodoPago && (
-                            <p>Pago: {venta.metodoPago}</p>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {venta.productos.length} producto{venta.productos.length !== 1 ? 's' : ''}
-                        </div>
-                        {venta.notas && (
-                          <p className="text-sm text-gray-600 mt-2 italic">{venta.notas}</p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        {venta.estatus === 'vendido' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-blue-600 hover:bg-blue-50"
-                            onClick={() => handleFacturar(venta)}
-                          >
-                            <FileText className="h-4 w-4 mr-1" />
-                            Facturar
-                          </Button>
-                        )}
-                        {venta.estatus === 'facturado' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-green-600 hover:bg-green-50"
-                            onClick={() => handleCobrar(venta)}
-                          >
-                            <DollarSign className="h-4 w-4 mr-1" />
-                            Cobrar
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 hover:bg-red-50"
-                          onClick={() => {
-                            if (confirm('¿Estás seguro de eliminar esta venta?')) {
-                              deleteVenta(venta.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        <FormField label="Número de Factura / Folio *" id={`factura-${venta.id}`}>
+          <Input
+            id={`factura-${venta.id}`}
+            value={facturaNumero}
+            onChange={(e) => setFacturaNumero(e.target.value)}
+            placeholder="Ej: FAC-2024-001"
+            disabled={isProcessing}
+            required
+          />
+        </FormField>
+
+        <FormField label="Fecha de Factura *" id={`fecha-${venta.id}`}>
+          <Input
+            id={`fecha-${venta.id}`}
+            type="date"
+            value={fechaFactura}
+            onChange={(e) => setFechaFactura(e.target.value)}
+            disabled={isProcessing}
+            required
+          />
+        </FormField>
+
+        {isProcessing && (
+          <StatusMessage
+            type="info"
+            message="Generando factura y PDF... Se abrirá automáticamente."
+          />
+        )}
+
+        <FormActions
+          onCancel={onCancel}
+          submitLabel="Timbrar Factura"
+          isLoading={isProcessing}
+          loadingLabel="Timbrando..."
+        />
+      </FormContainer>
+    </form>
+  );
+}
+
+function CobranzaForm({
+  venta,
+  onUpdate,
+  onCancel
+}: {
+  venta: VentaMedDev;
+  onUpdate: (updates: Partial<VentaMedDev>) => void;
+  onCancel: () => void;
+}) {
+  const [metodoPago, setMetodoPago] = useState('');
+  const [cuentaCobro, setCuentaCobro] = useState('');
+  const [lugarRecepcion, setLugarRecepcion] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (metodoPago.trim() && cuentaCobro.trim() && lugarRecepcion.trim()) {
+      onUpdate({ metodoPago, cuentaCobro, lugarRecepcion });
+      onCancel();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <FormContainer title="Registrar Cobro">
+        <FormField label="Método de Pago *" id={`metodo-${venta.id}`}>
+          <select
+            id={`metodo-${venta.id}`}
+            value={metodoPago}
+            onChange={(e) => setMetodoPago(e.target.value)}
+            className="w-full rounded-md border border-gray-300 p-2"
+            required
+          >
+            <option value="">Seleccione método de pago</option>
+            <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+            <option value="Cheque">Cheque</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+            <option value="Tarjeta de Débito">Tarjeta de Débito</option>
+          </select>
+        </FormField>
+
+        <FormField label="Cuenta Bancaria *" id={`cuenta-${venta.id}`}>
+          <Input
+            id={`cuenta-${venta.id}`}
+            value={cuentaCobro}
+            onChange={(e) => setCuentaCobro(e.target.value)}
+            placeholder="Ej: BBVA **** 1234"
+            required
+          />
+        </FormField>
+
+        <FormField label="Lugar de Recepción *" id={`lugar-${venta.id}`}>
+          <Input
+            id={`lugar-${venta.id}`}
+            value={lugarRecepcion}
+            onChange={(e) => setLugarRecepcion(e.target.value)}
+            placeholder="Ej: Oficina principal, Sucursal Norte"
+            required
+          />
+        </FormField>
+
+        <FormActions
+          onCancel={onCancel}
+          submitLabel="Marcar como Cobrado"
+        />
+      </FormContainer>
+    </form>
   );
 }

@@ -59,7 +59,7 @@ export default function ZogenKPIsPage() {
       title: 'Dashboard Financiero',
       description: 'Análisis de ingresos, gastos, utilidades y flujo de caja consolidado de todas las unidades de negocio.',
       icon: <DollarSign className="h-8 w-8 text-green-600" />,
-      href: '/zogen-kpis/analisis',
+      href: '/zogen-kpis/generales/reporte-financiero',
       color: 'border-green-200 bg-green-50/50',
       metrics: ['Ingresos', 'Gastos', 'Utilidad Neta', 'ROI'],
     },
@@ -67,7 +67,7 @@ export default function ZogenKPIsPage() {
       title: 'Dashboard de Ventas',
       description: 'Seguimiento de pipeline, conversión, ticket promedio y desempeño del equipo comercial.',
       icon: <TrendingUp className="h-8 w-8 text-blue-600" />,
-      href: '/zogen-kpis/analisis',
+      href: '/zogen-kpis/zogen-labs/reporte-ingresos',
       color: 'border-blue-200 bg-blue-50/50',
       metrics: ['Pipeline', 'Tasa Conversión', 'Ticket Promedio', 'Cuota'],
     },
@@ -75,7 +75,7 @@ export default function ZogenKPIsPage() {
       title: 'Dashboard Operativo',
       description: 'Monitoreo de eficiencia operativa, tiempos de entrega, SLA y satisfacción del cliente.',
       icon: <Activity className="h-8 w-8 text-purple-600" />,
-      href: '/zogen-kpis/analisis',
+      href: '/zogen-kpis/zogen-labs/reporte-kpis',
       color: 'border-purple-200 bg-purple-50/50',
       metrics: ['SLA', 'Tiempo Entrega', 'CSAT', 'NPS'],
     },
@@ -83,7 +83,7 @@ export default function ZogenKPIsPage() {
       title: 'Dashboard Estratégico',
       description: 'Visualización de KPIs estratégicos, crecimiento y comparativas vs objetivos anuales.',
       icon: <BarChart3 className="h-8 w-8 text-orange-600" />,
-      href: '/zogen-kpis/analisis',
+      href: '/zogen-kpis/generales/reporte-ytd',
       color: 'border-orange-200 bg-orange-50/50',
       metrics: ['Crecimiento YoY', 'Market Share', 'CAC', 'LTV'],
     },
@@ -95,18 +95,21 @@ export default function ZogenKPIsPage() {
       description: 'Resumen consolidado de todas las métricas clave',
       period: 'Noviembre 2025',
       icon: <Calendar className="h-5 w-5 text-gray-600" />,
+      href: '/zogen-kpis/generales',
     },
     {
       title: 'Análisis de Rentabilidad por Línea',
       description: 'Comparativa Labs vs MedDev',
       period: 'Q4 2025',
       icon: <PieChart className="h-5 w-5 text-gray-600" />,
+      href: '/zogen-kpis/generales/reporte-ingresos',
     },
     {
       title: 'Proyección de Flujo de Caja',
       description: 'Forecast próximos 6 meses',
       period: 'Dic 2025 - Jun 2026',
       icon: <LineChart className="h-5 w-5 text-gray-600" />,
+      href: '/zogen-kpis/generales/reporte-ytd',
     },
   ];
 
@@ -251,8 +254,10 @@ export default function ZogenKPIsPage() {
                           <p className="text-xs text-gray-500 mt-1">{reporte.period}</p>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm">
-                        Ver Reporte
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={reporte.href}>
+                          Ver Reporte
+                        </Link>
                       </Button>
                     </div>
                   ))}
@@ -277,7 +282,7 @@ export default function ZogenKPIsPage() {
                 size="lg"
                 className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
               >
-                <Link href="/zogen-kpis/analisis">
+                <Link href="/zogen-kpis/generales">
                   <BarChart3 className="h-5 w-5 mr-2" />
                   Crear Reporte Personalizado
                 </Link>

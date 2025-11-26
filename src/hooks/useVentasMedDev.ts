@@ -73,11 +73,13 @@ export function useVentasMedDev() {
     });
   };
 
-  const cobrarVenta = (id: string, metodoPago: string) => {
+  const cobrarVenta = (id: string, metodoPago: string, cuentaCobro?: string, lugarRecepcion?: string) => {
     updateVenta(id, {
       estatus: 'cobrado',
       cobranzaFecha: new Date().toISOString(),
       metodoPago,
+      cuentaCobro,
+      lugarRecepcion,
     });
   };
 

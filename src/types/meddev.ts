@@ -62,6 +62,8 @@ export interface VentaMedDev {
   // Datos de cobranza
   cobranzaFecha?: string;
   metodoPago?: string;
+  cuentaCobro?: string; // Nueva: cuenta donde se recibió el pago
+  lugarRecepcion?: string; // Nueva: lugar donde se recibió el pago
   createdAt: string;
   updatedAt: string;
 }

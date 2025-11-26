@@ -158,7 +158,7 @@ export default function SolicitudDetailPage() {
         <p className="text-lg font-semibold text-[#3A2D28]">
           No encontramos una solicitud con este teléfono.
         </p>
-        <Link href="/zogen-labs/ventas-zlabs/solicitudes">
+        <Link href="/ventas/solicitudes">
           <Button className="bg-[#8A5A44] text-white">
             <Undo2 className="mr-2 h-4 w-4" /> Volver al listado
           </Button>
@@ -191,7 +191,7 @@ export default function SolicitudDetailPage() {
 
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-6">
-          <Link href="/zogen-labs/ventas-zlabs/solicitudes">
+          <Link href="/ventas/solicitudes">
             <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver a Solicitudes
@@ -323,7 +323,7 @@ export default function SolicitudDetailPage() {
                     Completa los pasos del proceso: datos del paciente, carga de archivos, cotizaciones, y más.
                   </p>
                 </div>
-                <Link href={`/zogen-labs/ventas-zlabs/solicitudes/editar/${solicitud.id || normalizedParam}`}>
+                <Link href={`/ventas/solicitudes/editar/${solicitud.id || normalizedParam}`}>
                   <Button size="lg" className="bg-[#9B7CB8] hover:bg-[#8A6BA7] text-white">
                     Ir a Gestión
                     <ArrowRight className="h-4 w-4 ml-2" />

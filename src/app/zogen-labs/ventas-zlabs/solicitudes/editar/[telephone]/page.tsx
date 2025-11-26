@@ -184,12 +184,12 @@ export default function EditSolicitudPage() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#F5F0E8] text-center">
         <p className="text-lg font-semibold text-[#2C2C2C]">No encontramos esta solicitud.</p>
         <div className="flex gap-3">
-          <Link href="/zogen-labs/ventas-zlabs/solicitudes">
+          <Link href="/ventas/solicitudes">
             <Button className="bg-[#7B5C45] text-white hover:bg-[#6A4D38]">
               <Undo2 className="mr-2 h-4 w-4" /> Regresar
             </Button>
           </Link>
-          <Link href={`/zogen-labs/ventas-zlabs/solicitudes/${telephoneParam}`}>
+          <Link href={`/ventas/solicitudes/${telephoneParam}`}>
             <Button variant="outline" className="border-[#7B5C45] text-[#7B5C45]">
               Ver detalle
             </Button>
@@ -200,7 +200,7 @@ export default function EditSolicitudPage() {
   }
 
   const detailSlug = solicitud?.id || normalizedParam;
-  const viewHref = `/zogen-labs/ventas-zlabs/solicitudes/${detailSlug}`;
+  const viewHref = `/ventas/solicitudes/${detailSlug}`;
 
   return (
     <div className="min-h-screen bg-[#F5F0E8] text-[#2C2C2C]">
@@ -211,7 +211,7 @@ export default function EditSolicitudPage() {
               <h1 className="text-4xl font-semibold text-[#3C4858]">Actualizar prueba</h1>
             </div>
             <div className="flex gap-3">
-              <Link href="/zogen-labs/ventas-zlabs/solicitudes">
+              <Link href="/ventas/solicitudes">
                 <Button className="flex items-center gap-2 bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700">
                   <ArrowLeft className="h-4 w-4" />
                   Volver a Solicitudes
