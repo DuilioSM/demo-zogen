@@ -152,6 +152,8 @@ export function VTRequestSection({ solicitudId, solicitud, serviceData, disabled
         metodoPago,
         rfcAseguradora: aseguradoraRfcFinal,
         fechaSolicitud: new Date().toISOString(),
+        especialista: solicitud.doctor,
+        padecimiento: solicitud.condition,
         statusAprobacion: 'pendiente' as const,
         statusCompra: 'pendiente' as const,
         statusLogistica: 'pendiente' as const,

@@ -194,36 +194,43 @@ export function FilesUploadSection({ solicitudId, patient, paymentMethod, prescr
                       <Eye className="h-4 w-4" />
                     </Button>
                   )}
-                  <label htmlFor={`file-${id}`}>
-                    <Button size="sm" disabled={disabled || uploading === id} className="bg-[#7B5C45] hover:bg-[#6A4D38]" asChild>
-                      <span>
-                        {uploading === id ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Subiendo...
-                          </>
-                        ) : hasAnyFile ? (
-                          <>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Reemplazar
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Cargar
-                          </>
-                        )}
-                      </span>
+                  <label htmlFor={`file-${id}`} className="cursor-pointer">
+                    <input
+                      id={`file-${id}`}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(event) => handleFileUpload(id, event)}
+                      className="hidden"
+                      disabled={disabled || uploading === id}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={disabled || uploading === id}
+                      className="bg-[#7B5C45] hover:bg-[#6A4D38]"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document.getElementById(`file-${id}`)?.click();
+                      }}
+                    >
+                      {uploading === id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Subiendo...
+                        </>
+                      ) : hasAnyFile ? (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Reemplazar
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Cargar
+                        </>
+                      )}
                     </Button>
                   </label>
-                  <input
-                    id={`file-${id}`}
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(event) => handleFileUpload(id, event)}
-                    className="hidden"
-                    disabled={disabled || uploading === id}
-                  />
                 </div>
               </div>
             </div>

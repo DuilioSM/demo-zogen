@@ -33,6 +33,8 @@ export type AdminSolicitud = {
   fechaSolicitud: string;
   metodoPago?: 'bolsillo' | 'aseguradora';
   pagosLaboratorio?: PagoLaboratorio[];
+  especialista?: string;
+  padecimiento?: string;
 
   // Aprobación
   statusAprobacion: StatusAprobacion;
@@ -57,6 +59,7 @@ export type AdminSolicitud = {
   fechaFinResultados?: string;
   resultadosUrl?: string;
   resultadosNombre?: string;
+  comentariosResultados?: string;
 
   // Facturación
   statusFacturacion: StatusFacturacion;
@@ -74,7 +77,6 @@ export type AdminSolicitud = {
   codigoPostal?: string;
   tipoFactura?: 'PPD' | 'PUE';
   formaPago?: string;
-  regimenFiscal?: string;
   codigoProducto?: string;
   conceptoFactura?: string;
   ivaDesglosado?: number;

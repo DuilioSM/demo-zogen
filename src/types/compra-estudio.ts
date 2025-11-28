@@ -1,0 +1,23 @@
+export type CompraEstudio = {
+  id: string;
+  solicitudId?: string;
+  proveedor: string;
+  rfc?: string;
+  razonSocial?: string;
+  regimenFiscal?: string;
+  estudio?: string;
+  monto: number;
+  numeroFactura?: string;
+  fechaFactura?: string;
+  fechaVencimiento?: string;
+  status: 'pendiente' | 'factura-recibida' | 'completado';
+  statusPago?: 'pendiente' | 'pagado';
+  montoPagado?: number;
+  fechaPago?: string;
+  archivoFactura?: string;
+  archivoFacturaNombre?: string;
+  archivoComprobante?: string;
+  archivoComprobante Nombre?: string;
+  notas?: string;
+  createdAt: string;
+};
