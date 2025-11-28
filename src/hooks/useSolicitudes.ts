@@ -4,64 +4,119 @@ import { CRM_ZOGEN_API_BASE } from "@/lib/constants";
 
 type Status = "idle" | "loading" | "ready" | "error";
 
+let cachedSolicitudes: Solicitud[] | null = null;
+let cachedStatus: Status = "idle";
+let cachedError: string | null = null;
+let cachedPromise: Promise<void> | null = null;
+let localHydrated = false;
+
+const hydrateFromLocalStorage = () => {
+  if (localHydrated) return;
+  if (typeof window === 'undefined') return;
+  localHydrated = true;
+  try {
+    const stored = window.localStorage.getItem('zogen-solicitudes');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedSolicitudes = parsed;
+        cachedStatus = 'ready';
+        cachedError = null;
+      }
+    }
+  } catch (error) {
+    console.error('Error hydrating solicitudes from localStorage:', error);
+  }
+};
+
 export function useSolicitudes(options: { autoFetch?: boolean } = {}) {
   const { autoFetch = true } = options;
-  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
-  const [status, setStatus] = useState<Status>(autoFetch ? "loading" : "idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  hydrateFromLocalStorage();
+
+  const [solicitudes, setSolicitudes] = useState<Solicitud[]>(cachedSolicitudes ?? []);
+  const [status, setStatus] = useState<Status>(
+    cachedSolicitudes ? cachedStatus : autoFetch ? 'loading' : 'idle'
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(cachedError);
+
+  const syncFromCache = useCallback(() => {
+    setSolicitudes(cachedSolicitudes ?? []);
+    setStatus(cachedStatus);
+    setErrorMessage(cachedError);
+  }, []);
 
   const fetchSolicitudes = useCallback(async () => {
-    setStatus("loading");
+    hydrateFromLocalStorage();
+
+    if (cachedPromise) {
+      await cachedPromise;
+      syncFromCache();
+      return;
+    }
+
+    if (!cachedSolicitudes || cachedSolicitudes.length === 0) {
+      setStatus('loading');
+    }
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`${CRM_ZOGEN_API_BASE}/solicitudes`);
-      if (!response.ok) {
-        throw new Error("No se pudo obtener la información");
-      }
+    const request = (async () => {
+      try {
+        const response = await fetch(`${CRM_ZOGEN_API_BASE}/solicitudes`);
+        if (!response.ok) {
+          throw new Error('No se pudo obtener la información');
+        }
 
-      const data = await response.json();
-      const apiSolicitudes = data.solicitudes ?? [];
+        const data = await response.json();
+        const apiSolicitudes = data.solicitudes ?? [];
 
-      // Filtrar solicitudes vacías o sin datos válidos
-      const validApiSolicitudes = apiSolicitudes.filter((s: Solicitud) => {
-        // Filtrar solicitudes que no tengan médico, paciente, o tengan valores por defecto
-        return s.doctor &&
-               s.patient &&
-               s.doctor.toLowerCase() !== 'sin medico' &&
-               s.doctor.toLowerCase() !== 'sin médico' &&
-               s.patient.toLowerCase() !== 'sin paciente';
-      });
+        const validApiSolicitudes = apiSolicitudes.filter((s: Solicitud) => {
+          return (
+            s.doctor &&
+            s.patient &&
+            s.doctor.toLowerCase() !== 'sin medico' &&
+            s.doctor.toLowerCase() !== 'sin médico' &&
+            s.patient.toLowerCase() !== 'sin paciente'
+          );
+        });
 
-      // Obtener solicitudes locales
-      const localSolicitudes: Solicitud[] = [];
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('zogen-solicitudes');
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored);
-            localSolicitudes.push(...parsed);
-          } catch (e) {
-            console.error('Error parsing local solicitudes:', e);
+        const localSolicitudes: Solicitud[] = [];
+        if (typeof window !== 'undefined') {
+          const stored = localStorage.getItem('zogen-solicitudes');
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              localSolicitudes.push(...parsed);
+            } catch (e) {
+              console.error('Error parsing local solicitudes:', e);
+            }
           }
         }
-      }
 
-      // Combinar ambas fuentes
-      setSolicitudes([...localSolicitudes, ...validApiSolicitudes]);
-      setStatus("ready");
-    } catch (error) {
-      console.error("Error cargando solicitudes:", error);
-      setStatus("error");
-      setErrorMessage("No pudimos cargar las solicitudes. Intenta nuevamente.");
-    }
-  }, []);
+        cachedSolicitudes = [...localSolicitudes, ...validApiSolicitudes];
+        cachedStatus = 'ready';
+        cachedError = null;
+      } catch (error) {
+        console.error('Error cargando solicitudes:', error);
+        cachedStatus = 'error';
+        cachedError = 'No pudimos cargar las solicitudes. Intenta nuevamente.';
+      }
+    })();
+
+    cachedPromise = request;
+    await request;
+    cachedPromise = null;
+    syncFromCache();
+  }, [syncFromCache]);
 
   useEffect(() => {
     if (autoFetch) {
+      if (cachedSolicitudes && cachedSolicitudes.length > 0 && cachedStatus === 'ready') {
+        syncFromCache();
+        return;
+      }
       fetchSolicitudes();
     }
-  }, [autoFetch, fetchSolicitudes]);
+  }, [autoFetch, fetchSolicitudes, syncFromCache]);
 
   return {
     solicitudes,

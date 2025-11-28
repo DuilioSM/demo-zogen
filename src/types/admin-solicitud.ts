@@ -69,6 +69,22 @@ export type AdminSolicitud = {
   montoFactura?: number;
   uuidFactura?: string;
   pdfFacturaUrl?: string;
+  rfcCliente?: string;
+  razonSocial?: string;
+  codigoPostal?: string;
+  tipoFactura?: 'PPD' | 'PUE';
+  formaPago?: string;
+  regimenFiscal?: string;
+  codigoProducto?: string;
+  conceptoFactura?: string;
+  ivaDesglosado?: number;
+  saldoPendiente?: number;
+  cfdiPagoTipo?: string;
+  complementoPagoRegimen?: string;
+  complementoPagoRazonSocial?: string;
+  complementoPagoFolio?: string;
+  montoPago?: number;
+  saldoPosterior?: number;
 
   // Cobranza
   statusCobranza: StatusCobranza;

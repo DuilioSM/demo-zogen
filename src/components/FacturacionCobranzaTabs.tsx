@@ -134,7 +134,7 @@ function ItemCard<T extends BaseItem>({
           <div className="mt-4 pt-4 border-t">
             {!showForm && (
               <Button onClick={() => setShowForm(true)} size="sm">
-                Actualizar Factura
+                {activeTab === 'Facturado' ? 'Registrar Cobro' : 'Realizar Factura'}
               </Button>
             )}
             {showForm && (

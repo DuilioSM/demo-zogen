@@ -1,0 +1,63 @@
+'use client';
+
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+
+import { SolicitudEditor } from '@/components/SolicitudEditor';
+import { VTRequestSection } from '@/components/solicitudes/VTRequestSection';
+import { StepActions } from '@/components/solicitudes/StepActions';
+import { useSolicitudes } from '@/hooks/useSolicitudes';
+import { useServiceSnapshot } from '@/hooks/useServiceSnapshot';
+
+export default function SolicitudVTPage() {
+  const searchParams = useSearchParams();
+  const solicitudId = searchParams.get('id') || '';
+  const { solicitudes, status: solicitudesStatus } = useSolicitudes();
+  const solicitud = solicitudes.find((item) => item.id === solicitudId) || null;
+  const serviceData = useServiceSnapshot(solicitud ?? undefined);
+  const [isEditing, setIsEditing] = useState(false);
+
+  if (!solicitud) {
+    if (solicitudesStatus === 'loading') {
+      return (
+        <div className="flex min-h-[60vh] items-center justify-center gap-2 text-gray-500">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Cargando solicitud...
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-gray-500">
+        No encontramos la solicitud seleccionada.
+      </div>
+    );
+  }
+
+  return (
+    <SolicitudEditor solicitudId={solicitudId} currentStep="solicitud-vt">
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#2C2C2C] mb-2">Solicitud de VT</h2>
+            <p className="text-sm text-gray-600">Envía el expediente a administración cuando la aseguradora haya aprobado.</p>
+          </div>
+          <StepActions
+            isEditing={isEditing}
+            onToggleEdit={() => setIsEditing((prev) => !prev)}
+            onSave={() => setIsEditing(false)}
+            saveDisabled={!isEditing}
+            className="justify-end"
+          />
+        </div>
+        <VTRequestSection
+          solicitudId={solicitudId}
+          solicitud={solicitud}
+          serviceData={serviceData}
+          disabled={!isEditing}
+        />
+      </div>
+    </SolicitudEditor>
+  );
+}

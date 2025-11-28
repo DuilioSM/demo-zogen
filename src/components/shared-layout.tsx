@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Factory,
   Settings2,
+  Truck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -34,7 +35,40 @@ const moduleOptions: { id: ModuleKey; label: string }[] = [
 ];
 
 const defaultSectionsPerModule: Record<ModuleKey, string[]> = {
-  labs: ['Ventas-ZLabs', 'Administración-ZLabs', 'Configuración-ZLabs'],
+  labs: [
+    {
+      label: 'Ventas-ZLabs',
+      icon: <MessageSquare className="h-5 w-5" />,
+      children: [
+        { label: 'CRM WhatsApp', href: '/zogen-labs/ventas-zlabs/crm-whatsapp', description: 'Relación con médicos vía WhatsApp' },
+        { label: 'Administración de Solicitudes', href: '/zogen-labs/ventas-zlabs/solicitudes', description: 'Cotizaciones y VT del laboratorio' },
+      ],
+    },
+    {
+      label: 'Administración-ZLabs',
+      icon: <Building2 className="h-5 w-5" />,
+      children: [
+        { label: 'Aprobación VT', href: '/zogen-labs/administracion-zlabs/aprobacion-vt', description: 'Control de solicitudes VT' },
+        { label: 'Logística y Resultados', href: '/zogen-labs/administracion-zlabs/logistica-resultados', description: 'Seguimiento operativo' },
+        { label: 'Facturación y Cobranza', href: '/zogen-labs/administracion-zlabs/facturacion-cobranza', description: 'Ciclo de ingresos y cobro' },
+        { label: 'Pagos a Proveedores', href: '/zogen-labs/administracion-zlabs/pagos-proveedores', description: 'Pagos a laboratorios' },
+      ],
+    },
+    {
+      label: 'Configuración-ZLabs',
+      icon: <Settings2 className="h-5 w-5" />,
+      children: [
+        { label: 'Productos', href: '/zogen-labs/configuracion-zlabs/productos', description: 'Gestión de servicios Labs' },
+        { label: 'Padecimientos', href: '/zogen-labs/configuracion-zlabs/padecimientos', description: 'Catálogo de padecimientos' },
+        { label: 'Laboratorios', href: '/zogen-labs/configuracion-zlabs/laboratorios', description: 'Catálogo de laboratorios' },
+        { label: 'Aseguradoras', href: '/zogen-labs/configuracion-zlabs/aseguradoras', description: 'Convenios activos' },
+        { label: 'Especialistas', href: '/zogen-labs/configuracion-zlabs/especialistas', description: 'Fuerza comercial' },
+        { label: 'Cuentas', href: '/zogen-labs/configuracion-zlabs/cuentas', description: 'Hospitales y médicos' },
+        { label: 'Comisiones', href: '/zogen-labs/configuracion-zlabs/comisiones', description: 'Modelos de comisión' },
+        { label: 'Descuentos', href: '/zogen-labs/configuracion-zlabs/descuentos', description: 'Programas promocionales' },
+      ],
+    },
+  ],
   meddev: ['Ventas', 'Compras y Gastos', 'Inventarios', 'Configuración'],
   kpis: ['Generales', 'Zogen Labs', 'Zogen Med Dev'],
 };
@@ -46,8 +80,7 @@ const moduleNavigation: Record<ModuleKey, NavItem[]> = {
       icon: <MessageSquare className="h-5 w-5" />,
       children: [
         { label: 'CRM WhatsApp', href: '/zogen-labs/ventas-zlabs/crm-whatsapp', description: 'Relación con médicos vía WhatsApp' },
-        { label: 'Administración de Solicitudes', href: '/ventas/solicitudes', description: 'Cotizaciones y VT del laboratorio' },
-        { label: 'Prospectos', href: '/ventas/prospectos', description: 'Nuevos contactos y cuentas médicas' },
+        { label: 'Administración de Solicitudes', href: '/zogen-labs/ventas-zlabs/solicitudes', description: 'Cotizaciones y VT del laboratorio' },
       ],
     },
     {
@@ -55,9 +88,36 @@ const moduleNavigation: Record<ModuleKey, NavItem[]> = {
       icon: <Building2 className="h-5 w-5" />,
       children: [
         { label: 'Aprobación VT', href: '/zogen-labs/administracion-zlabs/aprobacion-vt', description: 'Control de solicitudes VT' },
-        { label: 'Logística y Resultados', href: '/zogen-labs/administracion-zlabs/logistica-resultados', description: 'Trazabilidad de recolecciones y resultados' },
-        { label: 'Facturación y Cobranza', href: '/zogen-labs/administracion-zlabs/facturacion-cobranza', description: 'Ciclo financiero de VT' },
-        { label: 'Pagos y Proveedores', href: '/zogen-labs/administracion-zlabs/pagos-proveedores', description: 'Pagos a laboratorios' },
+        { label: 'Logística y Resultados', href: '/zogen-labs/administracion-zlabs/logistica-resultados', description: 'Seguimiento operativo' },
+        { label: 'Resultados', href: '/zogen-labs/administracion-zlabs/resultados', description: 'Liberación y carga de estudios' },
+        { label: 'Facturación y Cobranza', href: '/zogen-labs/administracion-zlabs/facturacion-cobranza', description: 'Ciclo de ingresos y cobro' },
+        { label: 'Pagos a Proveedores', href: '/zogen-labs/administracion-zlabs/pagos-proveedores', description: 'Pagos a laboratorios' },
+      ],
+    },
+    {
+      label: 'Ingresos',
+      icon: <BarChart3 className="h-5 w-5" />,
+      children: [
+        { label: 'Panel de ingresos', href: '/zogen-labs/administracion-zlabs/ingresos', description: 'Visión financiera de ingresos' },
+        { label: 'Facturación y Cobranza', href: '/zogen-labs/administracion-zlabs/facturacion-cobranza', description: 'Ciclo de facturas y cobro' },
+      ],
+    },
+    {
+      label: 'Costos',
+      icon: <Factory className="h-5 w-5" />,
+      children: [
+        { label: 'Compra de estudios', href: '/zogen-labs/administracion-zlabs/compra-estudios', description: 'Control de compras a laboratorios' },
+        { label: 'Costos de venta', href: '/zogen-labs/administracion-zlabs/costos-venta', description: 'Márgenes y costos asociados' },
+        { label: 'Pagos a proveedores', href: '/zogen-labs/administracion-zlabs/pagos-proveedores', description: 'Ejecución de pagos' },
+      ],
+    },
+    {
+      label: 'Gastos',
+      icon: <Building2 className="h-5 w-5" />,
+      children: [
+        { label: 'Gastos generales', href: '/zogen-labs/administracion-zlabs/gastos', description: 'Control de gastos operativos' },
+        { label: 'Nómina', href: '/zogen-labs/administracion-zlabs/nomina', description: 'Detalle de pagos de personal' },
+        { label: 'Otros gastos y facturación emitida', href: '/zogen-labs/administracion-zlabs/otros-gastos', description: 'Facturas emitidas y egresos especiales' },
       ],
     },
     {
@@ -65,6 +125,7 @@ const moduleNavigation: Record<ModuleKey, NavItem[]> = {
       icon: <Settings2 className="h-5 w-5" />,
       children: [
         { label: 'Productos', href: '/zogen-labs/configuracion-zlabs/productos', description: 'Gestión de servicios Labs' },
+        { label: 'Padecimientos', href: '/zogen-labs/configuracion-zlabs/padecimientos', description: 'Catálogo de padecimientos' },
         { label: 'Laboratorios', href: '/zogen-labs/configuracion-zlabs/laboratorios', description: 'Catálogo de laboratorios' },
         { label: 'Aseguradoras', href: '/zogen-labs/configuracion-zlabs/aseguradoras', description: 'Convenios activos' },
         { label: 'Especialistas', href: '/zogen-labs/configuracion-zlabs/especialistas', description: 'Fuerza comercial' },
@@ -284,7 +345,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     {expandedSections.includes(item.label) && (
                       <div className="ml-4 mt-1 space-y-1">
                         {item.children.map((child) => (
-                          <Link key={child.href} href={child.href} onClick={() => handleChildClick(item.label)}>
+                          <Link key={child.href} href={child.href}>
                             <div
                               className={`px-3 py-2 rounded-lg text-sm ${
                                 isActive(child.href)

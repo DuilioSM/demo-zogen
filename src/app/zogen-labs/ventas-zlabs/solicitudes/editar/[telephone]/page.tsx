@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
-import { CheckCircle2, Loader2, Eye, Undo2, Upload, FileText, Download, FileCheck, FileArchive, Clock, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Loader2, Eye, Undo2, Upload, Download, FileCheck, FileArchive, Clock, ArrowLeft } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ import { ESPECIALISTAS_CATALOG } from "@/types/especialista";
 import { LABORATORIOS_CATALOG } from "@/types/laboratorio";
 import type { Prospecto } from "@/types/prospecto";
 import { PROSPECTOS_CATALOG } from "@/types/prospecto";
+import { PADECIMIENTOS_CATALOG } from "@/types/padecimiento";
+import { FilesUploadSection } from "@/components/solicitudes/FilesUploadSection";
 
 const STEPS = [
   { id: "order", label: "Solicitud del pedido" },
@@ -88,6 +90,20 @@ export default function EditSolicitudPage() {
   } = useMedicalPrescriptions();
   const [activeStep, setActiveStep] = useState<StepId>(STEPS[0].id);
   const [serviceData, setServiceData] = useState<SolicitudServiceData | null>(null);
+  const [orderData, setOrderData] = useState({
+    patient: "",
+    doctor: "",
+    testType: "",
+    condition: "",
+    contactPhone: "",
+  });
+  const [changeLog, setChangeLog] = useState<Array<{
+    id: string;
+    timestamp: string;
+    step: string;
+    action: string;
+    user: string;
+  }>>([]);
 
   const solicitud = useMemo(() => {
     return solicitudes.find((item) => {
@@ -158,6 +174,70 @@ export default function EditSolicitudPage() {
     if (!solicitud || !serviceData || typeof window === "undefined") return;
     window.localStorage.setItem(`service-data-${solicitud.id}`, JSON.stringify(serviceData));
   }, [serviceData, solicitud]);
+
+  useEffect(() => {
+    if (!solicitud) return;
+    const stored = localStorage.getItem(`order-data-${solicitud.id}`);
+    if (stored) {
+      try {
+        setOrderData(JSON.parse(stored));
+      } catch (error) {
+        console.error("Error loading order data:", error);
+        setOrderData({
+          patient: solicitud.patient,
+          doctor: solicitud.doctor,
+          testType: solicitud.testType,
+          condition: solicitud.condition,
+          contactPhone: solicitud.contactPhone,
+        });
+      }
+    } else {
+      setOrderData({
+        patient: solicitud.patient,
+        doctor: solicitud.doctor,
+        testType: solicitud.testType,
+        condition: solicitud.condition,
+        contactPhone: solicitud.contactPhone,
+      });
+    }
+
+    // Cargar log de cambios dummy
+    const dummyLog = [
+      {
+        id: "1",
+        timestamp: new Date(Date.now() - 86400000).toISOString(),
+        step: "Solicitud del pedido",
+        action: "Datos de solicitud guardados",
+        user: "Juan Pérez",
+      },
+      {
+        id: "2",
+        timestamp: new Date(Date.now() - 43200000).toISOString(),
+        step: "Datos del paciente",
+        action: "Información del paciente actualizada",
+        user: "María García",
+      },
+      {
+        id: "3",
+        timestamp: new Date(Date.now() - 21600000).toISOString(),
+        step: "Datos del Servicio",
+        action: "Servicio seleccionado: xT/xR + xF",
+        user: "Juan Pérez",
+      },
+    ];
+    setChangeLog(dummyLog);
+  }, [solicitud]);
+
+  const addChangeLogEntry = (step: string, action: string) => {
+    const newEntry = {
+      id: `change-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      step,
+      action,
+      user: "Usuario Actual",
+    };
+    setChangeLog((prev) => [newEntry, ...prev]);
+  };
 
   if (status === "loading") {
     return (
@@ -271,8 +351,52 @@ export default function EditSolicitudPage() {
               retryPrescription: fetchPrescriptions,
               serviceData,
               onServiceChange: (data) => setServiceData(data),
+              orderData,
+              onOrderChange: (data) => setOrderData(data),
+              addChangeLogEntry,
             })}
           </section>
+
+          <aside className="w-full lg:w-[280px]">
+            <div className="rounded-lg bg-white p-3 shadow-sm">
+              <h3 className="text-sm font-semibold text-[#2C2C2C] mb-2 flex items-center gap-2">
+                <span className="h-2 w-2 bg-[#7B5C45] rounded-full"></span>
+                Cambios
+              </h3>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                {changeLog.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic py-2">
+                    Sin cambios
+                  </p>
+                ) : (
+                  changeLog.map((log) => (
+                    <div
+                      key={log.id}
+                      className="border-l-2 border-[#7B5C45] bg-[#F5F0E8] p-2 rounded-r"
+                    >
+                      <div className="flex items-start justify-between mb-0.5">
+                        <span className="text-[10px] font-semibold text-[#7B5C45] uppercase">
+                          {log.step}
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          {new Date(log.timestamp).toLocaleDateString('es-MX', {
+                            day: '2-digit',
+                            month: 'short',
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#2C2C2C] leading-tight">
+                        {log.action}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        {log.user}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </aside>
         </div>
       </main>
     </div>
@@ -280,6 +404,14 @@ export default function EditSolicitudPage() {
 }
 
 type InsuranceStatus = 'pendiente' | 'enviado' | 'aprobado' | 'rechazado';
+
+type OrderData = {
+  patient: string;
+  doctor: string;
+  testType: string;
+  condition: string;
+  contactPhone: string;
+};
 
 type RenderStepProps = {
   solicitud: Solicitud;
@@ -298,6 +430,9 @@ type RenderStepProps = {
   retryPrescription: () => void;
   serviceData: SolicitudServiceData | null;
   onServiceChange: (data: SolicitudServiceData) => void;
+  orderData: OrderData;
+  onOrderChange: (data: OrderData) => void;
+  addChangeLogEntry: (step: string, action: string) => void;
 };
 
 function renderActiveStep({
@@ -317,56 +452,110 @@ function renderActiveStep({
   retryPrescription,
   serviceData,
   onServiceChange,
+  orderData,
+  onOrderChange,
+  addChangeLogEntry,
 }: RenderStepProps) {
-  const getMedicoSolicitante = () => {
-    const cuenta = CUENTAS_CATALOG.find(c => c.nombre === solicitud.doctor);
-    return cuenta?.nombre || solicitud.doctor;
-  };
-
   const getEspecialista = () => {
     // Buscar por teléfono en el catálogo de especialistas
     const especialista = ESPECIALISTAS_CATALOG.find(e => e.telefono === solicitud.vendorPhone);
     return especialista?.nombreCompleto || 'No asignado';
   };
 
-  const getLaboratorio = () => {
-    if (serviceData?.laboratorio) {
-      return serviceData.laboratorio;
+  const handleSaveOrderData = () => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(`order-data-${solicitud.id}`, JSON.stringify(orderData));
+
+    // También actualizar en el catálogo de solicitudes
+    try {
+      const storedSolicitudes = localStorage.getItem('zogen-solicitudes');
+      if (storedSolicitudes) {
+        const parsed = JSON.parse(storedSolicitudes);
+        const updated = parsed.map((item: Solicitud) =>
+          item.id === solicitud.id ? { ...item, ...orderData } : item
+        );
+        localStorage.setItem('zogen-solicitudes', JSON.stringify(updated));
+      }
+    } catch (error) {
+      console.error('Error syncing order data into solicitudes store:', error);
     }
-    const servicio = SERVICIOS_CATALOG.find(s => s.nombre === solicitud.testType);
-    return servicio?.laboratorio || 'No especificado';
+
+    addChangeLogEntry("Solicitud del pedido", "Datos de solicitud actualizados");
+    alert('Datos de la solicitud guardados correctamente');
+  };
+
+  const handleOrderInputChange = (field: keyof OrderData, value: string) => {
+    onOrderChange({ ...orderData, [field]: value });
   };
 
   switch (activeStep) {
     case "order":
       return (
         <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-900">
+              <strong>Editar datos de la solicitud:</strong> Puedes modificar los campos de la solicitud de pedido.
+            </p>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2">
-            <Field label="Paciente">
-              <div className="rounded-md border-l-4 border-l-[#C37C4D] bg-white px-4 py-3 text-sm font-semibold uppercase text-[#2C2C2C] shadow-sm">
-                {solicitud.patient}
-              </div>
+            <Field label="Nombre del paciente *">
+              <Input
+                value={orderData.patient}
+                onChange={(e) => handleOrderInputChange('patient', e.target.value)}
+                placeholder="Nombre completo del paciente"
+                className="border-[#D5D0C8]"
+              />
             </Field>
+            <Field label="Teléfono de contacto *">
+              <Input
+                value={orderData.contactPhone}
+                onChange={(e) => handleOrderInputChange('contactPhone', e.target.value)}
+                placeholder="+52 55 1234 5678"
+                className="border-[#D5D0C8]"
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
             <Field label="Médico Solicitante">
-              <ReadOnlyField value={getMedicoSolicitante()} />
+              <Input
+                value={orderData.doctor}
+                onChange={(e) => handleOrderInputChange('doctor', e.target.value)}
+                placeholder="Nombre del médico"
+                className="border-[#D5D0C8]"
+              />
+            </Field>
+            <Field label="Especialista">
+              <ReadOnlyField value={getEspecialista()} />
             </Field>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
             <Field label="Tipo de prueba">
-              <ReadOnlyField value={solicitud.testType} />
+              <Input
+                value={orderData.testType}
+                onChange={(e) => handleOrderInputChange('testType', e.target.value)}
+                placeholder="Tipo de estudio"
+                className="border-[#D5D0C8]"
+              />
             </Field>
-            <Field label="Padecimiento">
-              <ReadOnlyField value={solicitud.condition} />
-            </Field>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Field label="Teléfono de contacto">
-              <ReadOnlyField value={formatPhone(solicitud.contactPhone)} />
-            </Field>
-            <Field label="Especialista">
-              <ReadOnlyField value={getEspecialista()} />
+            <Field label="Padecimiento *">
+              <Select
+                value={orderData.condition}
+                onValueChange={(value) => handleOrderInputChange('condition', value)}
+              >
+                <SelectTrigger className="border-[#D5D0C8]">
+                  <SelectValue placeholder="Selecciona un padecimiento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PADECIMIENTOS_CATALOG.filter(p => p.activo).map((padecimiento) => (
+                    <SelectItem key={padecimiento.id} value={padecimiento.nombre}>
+                      {padecimiento.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           </div>
 
@@ -374,13 +563,14 @@ function renderActiveStep({
             <ReadOnlyField value={formatDate(solicitud.createdAt)} />
           </Field>
 
-          <Field label="Laboratorio">
-            <ReadOnlyField value={getLaboratorio()} />
-          </Field>
-
-       
-
-        
+          <div className="flex justify-end pt-4 border-t border-gray-200">
+            <Button
+              onClick={handleSaveOrderData}
+              className="bg-[#7B5C45] hover:bg-[#6A4D38] px-6 py-2"
+            >
+              Guardar Cambios
+            </Button>
+          </div>
         </div>
       );
     case "patient":
@@ -799,19 +989,19 @@ function PatientDataSection({ solicitudId, solicitud, patient, patientStatus, pa
           </div>
 
           {editMode && (
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
               <Button
                 variant="outline"
                 onClick={() => setEditMode(false)}
-                className="border-[#D5D0C8]"
+                className="border-[#D5D0C8] px-6 py-2"
               >
                 Cancelar
               </Button>
               <Button
                 onClick={handleSavePatientData}
-                className="bg-[#7B5C45] hover:bg-[#6A4D38]"
+                className="bg-[#7B5C45] hover:bg-[#6A4D38] px-6 py-2"
               >
-                Guardar Datos
+                Guardar Cambios
               </Button>
             </div>
           )}
@@ -871,12 +1061,6 @@ function ServiceDataSection({ solicitudId, serviceData, onServiceChange }: Servi
     });
   };
 
-  const handleCantidadChange = (value: string) => {
-    const parsed = Number(value);
-    const safeValue = Number.isNaN(parsed) || parsed <= 0 ? 1 : Math.floor(parsed);
-    updateData({ cantidad: safeValue });
-  };
-
   const handleSaveServiceData = () => {
     if (typeof window === 'undefined') return;
     setSavingService(true);
@@ -903,16 +1087,6 @@ function ServiceDataSection({ solicitudId, serviceData, onServiceChange }: Servi
               ))}
             </SelectContent>
           </Select>
-        </Field>
-
-        <Field label="Cantidad de estudios *">
-          <Input
-            type="number"
-            min={1}
-            value={serviceData.cantidad}
-            onChange={(event) => handleCantidadChange(event.target.value)}
-            className="border-[#D5D0C8]"
-          />
         </Field>
 
         <Field label="Laboratorio asignado *">
@@ -982,263 +1156,10 @@ function ServiceDataSection({ solicitudId, serviceData, onServiceChange }: Servi
         />
       </Field>
 
-      <div className="flex justify-end">
-        <Button onClick={handleSaveServiceData} disabled={savingService} className="bg-[#7B5C45] hover:bg-[#5E4331]">
-          {savingService ? 'Guardando…' : 'Guardar datos del servicio'}
+      <div className="flex justify-end pt-4 border-t border-gray-200">
+        <Button onClick={handleSaveServiceData} disabled={savingService} className="bg-[#7B5C45] hover:bg-[#6A4D38] px-6 py-2">
+          {savingService ? 'Guardando…' : 'Guardar Cambios'}
         </Button>
-      </div>
-    </div>
-  );
-}
-
-type FilesUploadSectionProps = {
-  solicitudId: string;
-  patient?: Patient;
-  paymentMethod?: PaymentMethod;
-  prescription?: MedicalPrescription;
-};
-
-function FilesUploadSection({ solicitudId, patient, paymentMethod, prescription }: FilesUploadSectionProps) {
-  const [files, setFiles] = useState<Record<string, string>>({});
-  const [uploading, setUploading] = useState<string | null>(null);
-
-  // Cargar archivos guardados localmente al inicio
-  useEffect(() => {
-    const stored = localStorage.getItem(`files-${solicitudId}`);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setFiles(parsed);
-      } catch (e) {
-        console.error('Error loading files:', e);
-      }
-    }
-  }, [solicitudId]);
-
-  // Construir lista de archivos con los datos de Google Sheets
-  const fileTypes = [
-    {
-      id: 'ine',
-      label: 'INE (Identificación Oficial)',
-      icon: FileText,
-      url: patient?.ineUrl
-    },
-    {
-      id: 'recetaMedica',
-      label: 'Receta Médica',
-      icon: FileText,
-      url: prescription?.prescriptionUrl
-    },
-    {
-      id: 'caratulaPoliza',
-      label: 'Carátula de Póliza',
-      icon: FileText,
-      url: undefined
-    },
-    {
-      id: 'informeAseguradora',
-      label: 'Informe Aseguradora',
-      icon: FileText,
-      url: paymentMethod?.documentUrl
-    },
-    {
-      id: 'consentimientoInformado',
-      label: 'Consentimiento Informado',
-      icon: FileText,
-      url: undefined
-    },
-    {
-      id: 'estudiosLaboratorio',
-      label: 'Estudios de Laboratorio',
-      icon: FileText,
-      url: undefined
-    },
-    {
-      id: 'otros',
-      label: 'Otros Documentos',
-      icon: FileText,
-      url: undefined
-    },
-  ];
-
-  const handleFileUpload = (fileId: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validar tamaño máximo (10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      alert('El archivo es demasiado grande. Tamaño máximo: 10MB');
-      return;
-    }
-
-    // Validar tipo de archivo
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Tipo de archivo no permitido. Solo se aceptan: PDF, JPG, PNG');
-      return;
-    }
-
-    setUploading(fileId);
-
-    // Convertir archivo a base64 para guardar en localStorage
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-
-      // Guardar archivo con metadata
-      const fileData = {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        data: base64String,
-        uploadedAt: new Date().toISOString()
-      };
-
-      const newFiles = { ...files, [fileId]: JSON.stringify(fileData) };
-      setFiles(newFiles);
-
-      // Guardar en localStorage
-      localStorage.setItem(`files-${solicitudId}`, JSON.stringify(newFiles));
-
-      setUploading(null);
-      alert(`Archivo "${file.name}" cargado correctamente`);
-    };
-
-    reader.onerror = () => {
-      alert('Error al cargar el archivo');
-      setUploading(null);
-    };
-
-    reader.readAsDataURL(file);
-  };
-
-  const handlePreviewFile = (fileId: string) => {
-    const fileData = files[fileId];
-    if (!fileData || typeof window === 'undefined') return;
-
-    try {
-      const parsed = JSON.parse(fileData);
-      const win = window.open('', '_blank');
-      if (!win) return;
-      win.document.write(`<!DOCTYPE html><html><head><title>${parsed.name}</title></head><body style="margin:0;height:100vh"><iframe src="${parsed.data}" style="width:100%;height:100%;border:0"></iframe></body></html>`);
-      win.document.close();
-    } catch (e) {
-      console.error('Error previewing file:', e);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-900">
-          <strong>Instrucciones:</strong> Carga los documentos requeridos para continuar con el proceso.
-          Los archivos aceptados son: PDF, JPG, PNG (máx. 10MB).
-        </p>
-      </div>
-
-      <div className="grid gap-4">
-        {fileTypes.map(({ id, label, icon: Icon, url }) => {
-          const localFile = files[id];
-          let fileInfo: { name: string; uploadedAt: string } | null = null;
-
-          if (localFile) {
-            try {
-              const parsed = JSON.parse(localFile);
-              fileInfo = {
-                name: parsed.name,
-                uploadedAt: new Date(parsed.uploadedAt).toLocaleString('es-MX')
-              };
-            } catch (e) {
-              // Si no se puede parsear, es una URL antigua
-            }
-          }
-
-          const hasLocalFile = !!localFile;
-          const hasExternalUrl = !!url;
-          const hasAnyFile = hasLocalFile || hasExternalUrl;
-
-          return (
-            <div key={id} className="border border-[#E4D4C8] rounded-xl p-4 bg-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1">
-                  <Icon className="h-5 w-5 text-[#7B5C45]" />
-                  <div className="flex-1">
-                    <p className="font-medium text-[#2C2C2C]">{label}</p>
-                    {hasLocalFile && fileInfo ? (
-                      <div className="mt-1">
-                        <p className="text-xs text-green-700 font-medium flex items-center gap-1">
-                          <FileCheck className="h-3 w-3" />
-                          {fileInfo.name}
-                        </p>
-                        <p className="text-xs text-[#666]">Subido: {fileInfo.uploadedAt}</p>
-                      </div>
-                    ) : hasExternalUrl ? (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-[#8A6BA7] hover:underline flex items-center gap-1 mt-1"
-                      >
-                        <Download className="h-3 w-3" />
-                        Ver desde Google Sheets
-                      </a>
-                    ) : (
-                      <p className="text-xs text-[#999] mt-1">No disponible</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {hasLocalFile && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePreviewFile(id)}
-                      className="border-[#8A6BA7] text-[#8A6BA7]"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <label htmlFor={`file-${id}`}>
-                    <Button
-                      size="sm"
-                      disabled={uploading === id}
-                      className="bg-[#7B5C45] hover:bg-[#6A4D38]"
-                      asChild
-                    >
-                      <span>
-                        {uploading === id ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Subiendo...
-                          </>
-                        ) : hasAnyFile ? (
-                          <>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Reemplazar
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Cargar
-                          </>
-                        )}
-                      </span>
-                    </Button>
-                  </label>
-                  <input
-                    id={`file-${id}`}
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => handleFileUpload(id, e)}
-                    className="hidden"
-                    disabled={uploading === id}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );

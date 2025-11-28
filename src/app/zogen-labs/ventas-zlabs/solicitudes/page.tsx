@@ -3,11 +3,9 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Eye,
   Loader2,
   Pencil,
   Trash,
-  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -394,8 +392,8 @@ export default function SolicitudesListPage() {
 
     return filteredSolicitudes.map((solicitud, index) => {
       const phoneParam = sanitizePhone(solicitud.contactPhone) || solicitud.id;
-      const editPath = `/ventas/solicitudes/editar/${solicitud.id}`;
-      const viewPath = `/ventas/solicitudes/${solicitud.id}`;
+      const editPath = `/zogen-labs/ventas-zlabs/solicitud-pedido?id=${solicitud.id}`;
+      const viewPath = `/zogen-labs/ventas-zlabs/solicitudes/${solicitud.id}`;
       const isSelected = selectedIds.has(solicitud.id);
 
       const estatusPrueba = getEstatusPrueba(solicitud.id);
@@ -407,31 +405,14 @@ export default function SolicitudesListPage() {
           className={`border-b border-[#E0DDD8] ${index % 2 === 0 ? 'bg-[#F5F0E8]' : 'bg-white'} hover:bg-[#EDE6D9]`}
         >
           <td className="px-4 py-4">
-            <div className="flex items-center gap-3 text-[#2C2C2C]">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-[#A8A39A] accent-[#7B5C45]"
-                checked={isSelected}
-                onChange={() => toggleSingleSelection(solicitud.id)}
-              />
-              <Link
-                href={viewPath}
-                className="hover:text-[#7B5C45]"
-                title="Ver"
-              >
-                <Eye className="h-4 w-4" />
-              </Link>
-              <Link
-                href={editPath}
-                className="hover:text-[#7B5C45]"
-                title="Editar"
-              >
-                <Pencil className="h-4 w-4" />
-              </Link>
-              <button type="button" className="hover:text-[#7B5C45]" title="Borrar">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
+            <Link
+              href={editPath}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[#7B5C45] hover:bg-[#7B5C45] hover:text-white rounded-md transition-colors"
+              title="Editar solicitud"
+            >
+              <Pencil className="h-4 w-4" />
+              Editar
+            </Link>
           </td>
           <td className="px-4 py-4 text-sm text-[#2C2C2C] font-mono">
             {solicitud.id}

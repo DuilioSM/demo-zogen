@@ -1,0 +1,367 @@
+export type Padecimiento = {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  createdAt: string;
+};
+
+// Fecha fija para evitar problemas de hidratación
+const CATALOG_CREATED_AT = '2025-01-01T00:00:00.000Z';
+
+// Catálogo de padecimientos
+export const PADECIMIENTOS_CATALOG: Padecimiento[] = [
+  {
+    id: 'sindrome-auto-inflamatorio',
+    nombre: 'Síndrome auto inflamatorio',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-rinon',
+    nombre: 'Cáncer de riñón',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'sarcoma',
+    nombre: 'Sarcoma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'carcinoma-origen-primario-desconocido',
+    nombre: 'Carcinoma de origen primario desconocido',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'sindrome-carcinoideo',
+    nombre: 'Síndrome carcinoideo',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-rectal',
+    nombre: 'Cáncer rectal',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-paladar-blando',
+    nombre: 'Cáncer de paladar blando',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'feocromocitoma',
+    nombre: 'Feocromocitoma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'tumores-celulas-germinales',
+    nombre: 'Tumores de células germinales',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'colangiocarcinoma',
+    nombre: 'Colangiocarcinoma (cáncer de las vías biliares)',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'leucemia-linfocitica-aguda',
+    nombre: 'Leucemia linfocítica aguda',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'tumor-medula-espinal',
+    nombre: 'Tumor de la médula espinal',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'tumor-vertebral',
+    nombre: 'Tumor vertebral',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'metastasis-cerebral',
+    nombre: 'Metástasis cerebral',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'tumores-glandulas-salivales',
+    nombre: 'Tumores de las glándulas salivales',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-labio',
+    nombre: 'Cáncer de labio',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-esofago',
+    nombre: 'Cáncer de esófago',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-lengua',
+    nombre: 'Cáncer de lengua',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'carcinoma-ductal-in-situ',
+    nombre: 'Carcinoma ductal in situ',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-estomago',
+    nombre: 'Cáncer de estómago',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'glioma',
+    nombre: 'Glioma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-huesos',
+    nombre: 'Cáncer de huesos',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-garganta',
+    nombre: 'Cáncer de garganta',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cordoma',
+    nombre: 'Cordoma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'tumores-neuroendocrinos',
+    nombre: 'Tumores neuroendocrinos',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'meningioma',
+    nombre: 'Meningioma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'tumores-pituitarios',
+    nombre: 'Tumores pituitarios',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-pancreas',
+    nombre: 'Cáncer de páncreas',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'melanoma',
+    nombre: 'Melanoma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-ampular',
+    nombre: 'Cáncer ampular',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'leucemia-mielógena-cronica',
+    nombre: 'Leucemia mielógena crónica',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'sindrome-lynch',
+    nombre: 'Síndrome de Lynch',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'carcinoma-celulas-merkel',
+    nombre: 'Carcinoma de células de Merkel',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'sarcoma-pleomorfico-indiferenciado',
+    nombre: 'Sarcoma pleomórfico indiferenciado',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'tumores-anexiales',
+    nombre: 'Tumores anexiales',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'leucemia-mielógena-aguda',
+    nombre: 'Leucemia mielógena aguda',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'carcinoma-nasofaringeo',
+    nombre: 'Carcinoma nasofaríngeo',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-endometrio',
+    nombre: 'Cáncer de endometrio',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-mama-inflamatorio',
+    nombre: 'Cáncer de mama inflamatorio',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-piel-no-melanoma',
+    nombre: 'Cáncer de piel no melanoma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-glandula-suprarrenal',
+    nombre: 'Cáncer de la glándula suprarrenal',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-tiroides',
+    nombre: 'Cáncer de tiroides',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'tumores-neuroendocrinos-pancreaticos',
+    nombre: 'Tumores neuroendocrinos pancreáticos',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-celulas-hurthle',
+    nombre: 'Cáncer de células de Hürthle',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'carcinoma-celulas-escamosas-piel',
+    nombre: 'Carcinoma de células escamosas de la piel',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'estesioneuroblastoma',
+    nombre: 'Estesioneuroblastoma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-cuello-uterino',
+    nombre: 'Cáncer de cuello uterino',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-mama',
+    nombre: 'Cáncer de mama',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-vulvar',
+    nombre: 'Cáncer vulvar',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'leucemia-linfocitica-cronica',
+    nombre: 'Leucemia linfocítica crónica',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'macroglobulinemia-waldenstrom',
+    nombre: 'Macroglobulinemia de Waldenström',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-vagina',
+    nombre: 'Cáncer de vagina',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-cabeza-cuello',
+    nombre: 'Cáncer de cabeza y cuello',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'rabdomiosarcoma',
+    nombre: 'Rabdomiosarcoma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'condrosarcoma',
+    nombre: 'Condrosarcoma',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'neurofibromatosis',
+    nombre: 'Neurofibromatosis',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'leucemia',
+    nombre: 'Leucemia',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'tumores-desmoides',
+    nombre: 'Tumores desmoides',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+  {
+    id: 'cancer-testicular',
+    nombre: 'Cáncer testicular',
+    activo: true,
+    createdAt: CATALOG_CREATED_AT,
+  },
+];
