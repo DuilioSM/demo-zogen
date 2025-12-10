@@ -8,36 +8,15 @@ let cachedSolicitudes: Solicitud[] | null = null;
 let cachedStatus: Status = "idle";
 let cachedError: string | null = null;
 let cachedPromise: Promise<void> | null = null;
-let localHydrated = false;
-
-const hydrateFromLocalStorage = () => {
-  if (localHydrated) return;
-  if (typeof window === 'undefined') return;
-  localHydrated = true;
-  try {
-    const stored = window.localStorage.getItem('zogen-solicitudes');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        cachedSolicitudes = parsed;
-        cachedStatus = 'ready';
-        cachedError = null;
-      }
-    }
-  } catch (error) {
-    console.error('Error hydrating solicitudes from localStorage:', error);
-  }
-};
 
 export function useSolicitudes(options: { autoFetch?: boolean } = {}) {
   const { autoFetch = true } = options;
-  hydrateFromLocalStorage();
 
-  const [solicitudes, setSolicitudes] = useState<Solicitud[]>(cachedSolicitudes ?? []);
-  const [status, setStatus] = useState<Status>(
-    cachedSolicitudes ? cachedStatus : autoFetch ? 'loading' : 'idle'
-  );
-  const [errorMessage, setErrorMessage] = useState<string | null>(cachedError);
+  // Siempre inicializar con valores consistentes para evitar errores de hidratación
+  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
+  const [status, setStatus] = useState<Status>(autoFetch ? 'loading' : 'idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const syncFromCache = useCallback(() => {
     setSolicitudes(cachedSolicitudes ?? []);
@@ -46,8 +25,6 @@ export function useSolicitudes(options: { autoFetch?: boolean } = {}) {
   }, []);
 
   const fetchSolicitudes = useCallback(async () => {
-    hydrateFromLocalStorage();
-
     if (cachedPromise) {
       await cachedPromise;
       syncFromCache();
@@ -108,12 +85,18 @@ export function useSolicitudes(options: { autoFetch?: boolean } = {}) {
     syncFromCache();
   }, [syncFromCache]);
 
+  // Efecto para hidratar solo en el cliente después del montaje
   useEffect(() => {
+    setIsHydrated(true);
+
+    // Si ya hay datos en caché, sincronizarlos
+    if (cachedSolicitudes && cachedSolicitudes.length > 0 && cachedStatus === 'ready') {
+      syncFromCache();
+      return;
+    }
+
+    // Si autoFetch está activo, hacer fetch
     if (autoFetch) {
-      if (cachedSolicitudes && cachedSolicitudes.length > 0 && cachedStatus === 'ready') {
-        syncFromCache();
-        return;
-      }
       fetchSolicitudes();
     }
   }, [autoFetch, fetchSolicitudes, syncFromCache]);
@@ -123,5 +106,6 @@ export function useSolicitudes(options: { autoFetch?: boolean } = {}) {
     status,
     errorMessage,
     fetchSolicitudes,
+    isHydrated,
   };
 }
