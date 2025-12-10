@@ -92,7 +92,7 @@ export function useSolicitudes(options: { autoFetch?: boolean } = {}) {
           }
         }
 
-        cachedSolicitudes = [...localSolicitudes, ...validApiSolicitudes];
+        cachedSolicitudes = [...validApiSolicitudes, ...localSolicitudes];
         cachedStatus = 'ready';
         cachedError = null;
       } catch (error) {
